@@ -205,5 +205,35 @@ scrypt_verify(const uint8_t *x, const uint8_t *y, size_t len) {
 	return (1 & ((differentbits - 1) >> 8));
 }
 
+void
+scrypt_ensure_zero(void *p, size_t len) {
+#if ((defined(CPU_X86) || defined(CPU_X86_64)) && defined(COMPILER_MSVC))
+		__stosb((unsigned char *)p, 0, len);
+#elif (defined(CPU_X86) && defined(COMPILER_GCC))
+	__asm__ __volatile__(
+		"pushl %%edi;\n"
+		"pushl %%ecx;\n"
+		"rep stosb;\n"
+		"popl %%ecx;\n"
+		"popl %%edi;\n"
+		:: "a"(0), "D"(p), "c"(len) : "cc", "memory"
+	);
+#elif (defined(CPU_X86_64) && defined(COMPILER_GCC))
+	__asm__ __volatile__(
+		"pushq %%rdi;\n"
+		"pushq %%rcx;\n"
+		"rep stosb;\n"
+		"popq %%rcx;\n"
+		"popq %%rdi;\n"
+		:: "a"(0), "D"(p), "c"(len) : "cc", "memory"
+	);
+#else
+	volatile uint8_t *b = (volatile uint8_t *)p;
+	size_t i;
+	for (i = 0; i < len; i++)
+		b[i] = 0;
+#endif
+}
+
 #include "scrypt-jane-portable-x86.h"
 

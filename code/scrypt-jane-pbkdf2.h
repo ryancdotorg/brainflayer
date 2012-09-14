@@ -39,6 +39,8 @@ scrypt_hmac_init(scrypt_hmac_state *st, const uint8_t *key, size_t keylen) {
 	for (i = 0; i < SCRYPT_HASH_BLOCK_SIZE; i++)
 		pad[i] ^= (0x5c ^ 0x36);
 	scrypt_hash_update(&st->outer, pad, SCRYPT_HASH_BLOCK_SIZE);
+
+	scrypt_ensure_zero(pad, sizeof(pad));
 }
 
 static void
@@ -56,6 +58,8 @@ scrypt_hmac_finish(scrypt_hmac_state *st, scrypt_hash_digest mac) {
 	/* h(outer || h(inner || m)) */
 	scrypt_hash_update(&st->outer, innerhash, sizeof(innerhash));
 	scrypt_hash_finish(&st->outer, mac);
+
+	scrypt_ensure_zero(st, sizeof(*st));
 }
 
 static void
@@ -100,4 +104,9 @@ scrypt_pbkdf2(const uint8_t *password, size_t password_len, const uint8_t *salt,
 		out += SCRYPT_HASH_DIGEST_SIZE;
 		bytes -= SCRYPT_HASH_DIGEST_SIZE;
 	}
+
+	scrypt_ensure_zero(ti, sizeof(ti));
+	scrypt_ensure_zero(u, sizeof(u));
+	scrypt_ensure_zero(&hmac_pw, sizeof(hmac_pw));
+	scrypt_ensure_zero(&hmac_pw_salt, sizeof(hmac_pw_salt));
 }
