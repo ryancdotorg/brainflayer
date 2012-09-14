@@ -2,7 +2,7 @@
 
 test() {
 	rm -f scrypt_test
-	gcc scrypt-jane-test.c -O3 -DSCRYPT_$1 -DSCRYPT_$2 $3 -o scrypt_test >/dev/null
+	gcc scrypt-jane-test.c -O3 -DSCRYPT_$1 -DSCRYPT_$2 $3 -o scrypt_test 2>/dev/null
 	local RC=$?
 	if [ $RC -ne 0 ]; then
 		echo "$1/$2: failed to compile "
