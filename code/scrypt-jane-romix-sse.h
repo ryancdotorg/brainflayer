@@ -1,8 +1,9 @@
 /* sse block operations */
 
 /* x86/64 gcc gets inline asm */
-#if (defined(COMPILER_GCC) && (defined(X86ASM_SSE) || defined(X86_64ASM))) || (defined(SYSTEM_SSE) && !defined(SCRYPT_BLOCKOP_INCLUDED))
+#if (!defined(SCRYPT_CHOOSE_COMPILETIME) && defined(COMPILER_GCC) && (defined(X86ASM_SSE) || defined(X86_64ASM)))
 
+#undef SCRYPT_BLOCKOP_INCLUDED
 #define SCRYPT_BLOCKOP_INCLUDED
 #define SCRYPT_BLOCKOP_SSE
 
@@ -23,6 +24,9 @@ scrypt_copy_sse(uint8_t *dst, const uint8_t *src, uint32_t len) {
 		a2(sub %0, 64)
 		a1(jnz 1b)
 		asm_gcc_parms() : "+r"(len), "+r"(dst), "+r"(src) :: "cc", "memory"
+#if defined(SYSTEM_SSE)
+		, "%xmm0", "%xmm1", "%xmm2", "%xmm3"
+#endif
 	asm_gcc_end()
 }
 
@@ -51,6 +55,9 @@ scrypt_xor_sse(uint8_t *dst, const uint8_t *src, uint32_t len) {
 		a2(sub %0, 64)
 		a1(jnz 1b)
 		asm_gcc_parms() : "+r"(len), "+r"(dst), "+r"(src) :: "cc", "memory"
+#if defined(SYSTEM_SSE)
+		, "%xmm0", "%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6", "%xmm7"
+#endif
 	asm_gcc_end()
 }
 
@@ -65,7 +72,10 @@ scrypt_block_copy_sse(uint8_t *dst, const uint8_t *src) {
 		a2(movaps [%0+16], xmm1)
 		a2(movaps [%0+32], xmm2)
 		a2(movaps [%0+48], xmm3)
-		asm_gcc_parms() : : "r"(dst), "r"(src)
+		asm_gcc_parms() : : "r"(dst), "r"(src) : "memory"
+#if defined(SYSTEM_SSE)
+		, "%xmm0", "%xmm1", "%xmm2", "%xmm3"
+#endif
 	asm_gcc_end()
 }
 
@@ -88,15 +98,20 @@ scrypt_block_xor_sse(uint8_t *dst, const uint8_t *src) {
 		a2(movaps [%0+16], xmm1)
 		a2(movaps [%0+32], xmm2)
 		a2(movaps [%0+48], xmm3)
-		asm_gcc_parms() : : "r"(dst), "r"(src)
+		asm_gcc_parms() : : "r"(dst), "r"(src) : "memory"
+#if defined(SYSTEM_SSE)
+		, "%xmm0", "%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6", "%xmm7"
+#endif
 	asm_gcc_end()
 }
 #endif
 
 
-/* msvc + x64 gcc gets intrinsics */
-#if defined(X86_INTRINSIC_SSE)
+/* intrinsics */
+#if defined(X86_INTRINSIC_SSE) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_BLOCKOP_INCLUDED))
 
+#undef SCRYPT_BLOCKOP_INCLUDED
+#define SCRYPT_BLOCKOP_INCLUDED
 #define SCRYPT_SSE
 
 static void INLINE

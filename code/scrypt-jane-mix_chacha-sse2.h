@@ -1,5 +1,5 @@
 /* x86/64 gcc gets inline asm */
-#if (!defined(SCRYPT_CHOOSE_COMPILETIME) && defined(COMPILER_GCC) && (defined(X86ASM_SSE2) || defined(X86_64ASM_SSE2))) || (defined(SYSTEM_SSE2) && !defined(SCRYPT_CHACHA_INCLUDED))
+#if (!defined(SCRYPT_CHOOSE_COMPILETIME) && defined(COMPILER_GCC) && (defined(X86ASM_SSE2) || defined(X86_64ASM_SSE2)))
 
 #undef SCRYPT_MIX
 #define SCRYPT_MIX "ChaCha20/8 SSE2"
@@ -81,16 +81,24 @@ chacha_core_sse2(uint32_t state[16]) {
 		a2(movdqa [%1+16],xmm1)
 		a2(movdqa [%1+32],xmm2)
 		a2(movdqa [%1+48],xmm3)
-		asm_gcc_parms() : "+r"(rounds) : "r"(state) : "cc"
+		asm_gcc_parms() : "+r"(rounds) : "r"(state) : "cc", "memory"
+#if defined(SYSTEM_SSE)
+		, "%xmm0", "%xmm1", "%xmm2", "%xmm3", "%xmm6"
+#endif
 	asm_gcc_end()
 }
 
 #endif
 
 
-/* msvc gets intrinsics */
-#if defined(X86_INTRINSIC_SSE2)
+/* intrinsics */
+#if defined(X86_INTRINSIC_SSE2) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_CHACHA_INCLUDED))
 
+#undef SCRYPT_MIX
+#define SCRYPT_MIX "ChaCha20/8 SSE2i"
+
+#undef SCRYPT_CHACHA_INCLUDED
+#define SCRYPT_CHACHA_INCLUDED
 #define SCRYPT_CHACHA_SSE2
 
 static void INLINE

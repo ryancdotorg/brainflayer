@@ -48,15 +48,25 @@
 	#endif
 #endif
 
-#if defined(COMPILER_GCC) && defined(SCRYPT_CHOOSE_COMPILETIME)
+#if defined(COMPILER_GCC)
 	#if defined(__SSE__)
 		#define SYSTEM_SSE
+		#if defined(SCRYPT_CHOOSE_COMPILETIME)
+			#define X86_INTRINSIC
+			#define X86_INTRINSIC_SSE
+		#endif
 	#endif
 	#if defined(__SSE2__)
 		#define SYSTEM_SSE2
+		#if defined(SCRYPT_CHOOSE_COMPILETIME)
+			#define X86_INTRINSIC_SSE2
+		#endif
 	#endif
 	#if defined(__SSSE3__)
 		#define SYSTEM_SSSE3
+		#if defined(SCRYPT_CHOOSE_COMPILETIME)
+			#define X86_INTRINSIC_SSSE3
+		#endif
 	#endif
 #endif
 
@@ -72,12 +82,10 @@
 		typedef __m128d xmmd;
 	#endif
 	#if defined(X86_INTRINSIC_SSE2)
-		#define X86_INTRINSIC_SSE2
 		#include <emmintrin.h>
 		typedef __m128i xmmi;
 	#endif
 	#if defined(X86_INTRINSIC_SSSE3)
-		#define X86_INTRINSIC_SSSE3
 		#include <tmmintrin.h>
 	#endif
 #endif

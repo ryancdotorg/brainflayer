@@ -1,5 +1,5 @@
 /* x86/64 gcc gets inline asm */
-#if (!defined(SCRYPT_CHOOSE_COMPILETIME) && defined(COMPILER_GCC) && (defined(X86ASM_SSE2) || defined(X86_64ASM_SSE2))) || (defined(SYSTEM_SSE2) && !defined(SCRYPT_SALSA_INCLUDED))
+#if (!defined(SCRYPT_CHOOSE_COMPILETIME) && defined(COMPILER_GCC) && (defined(X86ASM_SSE2) || defined(X86_64ASM_SSE2)))
 
 #undef SCRYPT_MIX
 #define SCRYPT_MIX "Salsa20/8 SSE2"
@@ -89,7 +89,10 @@ salsa_core_sse2(uint32_t state[16]) {
 		a2(movdqa [%1+16],xmm1)
 		a2(movdqa [%1+32],xmm2)
 		a2(movdqa [%1+48],xmm3)
-		asm_gcc_parms() : "+r"(rounds) : "r"(state) : "cc"
+		asm_gcc_parms() : "+r"(rounds) : "r"(state) : "cc", "memory"
+#if defined(SYSTEM_SSE)
+		, "%xmm0", "%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5"
+#endif
 	asm_gcc_end()
 }
 
@@ -128,7 +131,10 @@ salsa_core_tangle_sse2(uint32_t *blocks, size_t count) {
 			a2(movdqa [%0+16], xmm1)
 			a2(movdqa [%0+32], xmm2)
 			a2(movdqa [%0+48], xmm3)
-			asm_gcc_parms() :: "r"(blocks)
+			asm_gcc_parms() :: "r"(blocks) : "memory"
+#if defined(SYSTEM_SSE)
+		, "%xmm0", "%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5"
+#endif
 		asm_gcc_end()
 
 		blocks += 16;
@@ -170,7 +176,10 @@ salsa_core_untangle_sse2(uint32_t *blocks, size_t count) {
 			a2(movdqa [%0+16], xmm3)
 			a2(movdqa [%0+32], xmm2)
 			a2(movdqa [%0+48], xmm1)
-			asm_gcc_parms() :: "r"(blocks)
+			asm_gcc_parms() :: "r"(blocks) : "memory"
+#if defined(SYSTEM_SSE)
+		, "%xmm0", "%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6"
+#endif
 		asm_gcc_end()
 
 		blocks += 16;
@@ -180,10 +189,16 @@ salsa_core_untangle_sse2(uint32_t *blocks, size_t count) {
 #endif
 
 
-/* msvc + x64 gcc get intrinsics */
-#if defined(X86_INTRINSIC_SSE2)
+/* intrinsics */
+#if defined(X86_INTRINSIC_SSE2) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_SALSA_INCLUDED))
 
+#undef SCRYPT_MIX
+#define SCRYPT_MIX "Salsa20/8 SSE2i"
+
+#undef SCRYPT_SALSA_INCLUDED
+#define SCRYPT_SALSA_INCLUDED
 #define SCRYPT_SALSA_SSE2
+
 
 /*
 	Default layout:
