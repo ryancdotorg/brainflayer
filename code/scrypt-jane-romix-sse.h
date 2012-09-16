@@ -112,7 +112,7 @@ scrypt_block_xor_sse(uint8_t *dst, const uint8_t *src) {
 
 #undef SCRYPT_BLOCKOP_INCLUDED
 #define SCRYPT_BLOCKOP_INCLUDED
-#define SCRYPT_SSE
+#define SCRYPT_BLOCKOP_SSE
 
 static void INLINE
 scrypt_copy_sse(uint8_t *dst, const uint8_t *src, uint32_t len) {
