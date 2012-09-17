@@ -16,28 +16,21 @@
 static void NOINLINE
 SCRYPT_CHUNKMIX_FN(uint8_t *Bout/*[chunkBytes]*/, uint8_t *Bin/*[chunkBytes]*/, uint32_t r) {
 	uint8_t MM16 X[SCRYPT_BLOCK_BYTES];
-	uint32_t i, blocksPerChunk = r * 2;
+	uint32_t i, blocksPerChunk = r * 2, half = 0;
 
 	/* 1: X = B_{2r - 1} */
 	SCRYPT_BLOCK_COPY_FN(X, scrypt_block(Bin, blocksPerChunk - 1));
 
 	/* 2: for i = 0 to 2r - 1 do */
-	for (i = 0; i < blocksPerChunk; i += 2) {
+	for (i = 0; i < blocksPerChunk; i++, half ^= r) {
 		/* 3: X = H(X ^ B_i) */
 		SCRYPT_BLOCK_XOR_FN(X, scrypt_block(Bin, i));
 		SCRYPT_MIX_FN((uint32_t *)X);
 
 		/* 4: Y_i = X */
 		/* 6: B'[0..r-1] = Y_even */
-		SCRYPT_BLOCK_COPY_FN(scrypt_block(Bout, (i / 2)), X);
-
-		/* 3: X = H(X ^ B_i) */
-		SCRYPT_BLOCK_XOR_FN(X, scrypt_block(Bin, (i + 1)));
-		SCRYPT_MIX_FN((uint32_t *)X);
-
-		/* 4: Y_i = X */
 		/* 6: B'[r..2r-1] = Y_odd */
-		SCRYPT_BLOCK_COPY_FN(scrypt_block(Bout, (i / 2) + r), X);
+		SCRYPT_BLOCK_COPY_FN(scrypt_block(Bout, (i / 2) + half), X);
 	}
 }
 
