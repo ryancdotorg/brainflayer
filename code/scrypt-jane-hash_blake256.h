@@ -129,8 +129,7 @@ scrypt_hash_update(scrypt_hash_state *S, const uint8_t *in, size_t inlen) {
 
 static void
 scrypt_hash_finish(scrypt_hash_state *S, uint8_t *hash) {
-	uint32_t th, tl;
-	size_t bits;
+	uint32_t th, tl, bits;
 
 	bits = (S->leftover << 3);
 	tl = S->T[0] + bits;

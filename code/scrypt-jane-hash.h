@@ -33,7 +33,7 @@ scrypt_test_hash() {
 	size_t i;
 
 	for (i = 0; i < SCRYPT_TEST_HASH_LEN; i++)
-		msg[i] = i;
+		msg[i] = (uint8_t)i;
 
 	scrypt_hash_init(&st);
 	for (i = 0; i < SCRYPT_TEST_HASH_LEN + 1; i++) {

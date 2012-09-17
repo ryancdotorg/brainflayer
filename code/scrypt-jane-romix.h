@@ -29,7 +29,7 @@ scrypt_test_mix_instance(mixfn mixfn, blockfixfn prefn, blockfixfn postfn, const
 	size_t i;
 
 	for (i = 0; i < 16; i++) {
-		v = i;
+		v = (uint32_t)i;
 		v = (v << 8) | v;
 		v = (v << 16) | v;
 		block[i] = v;
