@@ -67,6 +67,31 @@ typedef struct scrypt_aligned_alloc_t {
 	uint8_t *mem, *ptr;
 } scrypt_aligned_alloc;
 
+#if defined(SCRYPT_TEST_SPEED)
+static uint8_t *mem_base = (uint8_t *)0;
+static size_t mem_bump = 0;
+
+/* allocations are assumed to be multiples of 64 bytes and total allocations not to exceed ~1.01gb */
+static scrypt_aligned_alloc
+scrypt_alloc(uint64_t size) {
+	if (!mem_base) {
+		mem_base = (uint8_t *)malloc((1024 * 1024 * 1024) + (1024 * 1024) + 63);
+		if (!mem_base)
+			scrypt_fatal_error("scrypt: out of memory");
+		mem_base = (uint8_t *)(((size_t)mem_base + 63) & ~63);
+	}
+	scrypt_aligned_alloc aa;
+	aa.mem = mem_base + mem_bump;
+	aa.ptr = aa.mem;
+	mem_bump += (size_t)size;
+	return aa;
+}
+
+static void
+scrypt_free(scrypt_aligned_alloc *aa) {
+	mem_bump = 0;
+}
+#else
 static scrypt_aligned_alloc
 scrypt_alloc(uint64_t size) {
 	static const size_t max_alloc = (size_t)-1;
@@ -85,6 +110,8 @@ static void
 scrypt_free(scrypt_aligned_alloc *aa) {
 	free(aa->mem);
 }
+#endif
+
 
 void
 scrypt(const uint8_t *password, size_t password_len, const uint8_t *salt, size_t salt_len, uint8_t Nfactor, uint8_t rfactor, uint8_t pfactor, uint8_t *out, size_t bytes) {
