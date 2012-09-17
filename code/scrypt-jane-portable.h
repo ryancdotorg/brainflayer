@@ -1,3 +1,39 @@
+/* determine os */
+#if defined(_WIN32)	|| defined(_WIN64) || defined(__TOS_WIN__) || defined(__WINDOWS__)
+	#include <windows.h>
+	#include <wincrypt.h>
+	#define OS_WINDOWS
+#elif defined(sun) || defined(__sun) || defined(__SVR4) || defined(__svr4__)
+	#include <sys/mman.h>
+	#include <sys/time.h>
+	#include <fcntl.h>
+
+	#define OS_SOLARIS
+#else
+	#include <sys/mman.h>
+	#include <sys/time.h>
+	#include <sys/param.h> /* need this to define BSD */
+	#include <unistd.h>
+	#include <fcntl.h>
+
+	#define OS_NIX
+	#if defined(__linux__)
+		#include <endian.h>
+		#define OS_LINUX
+	#elif defined(BSD)
+		#define OS_BSD
+
+		#if defined(MACOS_X) || (defined(__APPLE__) & defined(__MACH__))
+			#define OS_OSX
+		#elif defined(macintosh) || defined(Macintosh)
+			#define OS_MAC
+		#elif defined(__OpenBSD__)
+			#define OS_OPENBSD
+		#endif
+	#endif
+#endif
+
+
 /* determine compiler */
 #if defined(_MSC_VER)
 	#define COMPILER_MSVC _MSC_VER
