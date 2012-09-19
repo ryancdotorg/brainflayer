@@ -1,6 +1,4 @@
 /* basic block operations */
-#if !defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_BLOCKOP_INCLUDED)
-
 static void INLINE
 scrypt_copy_basic(uint8_t *dst, const uint8_t *src, size_t len) {
 	const size_t *s = (const size_t *)src;
@@ -34,8 +32,6 @@ static void INLINE
 scrypt_block_xor_basic(uint8_t *dst, const uint8_t *src) {
 	scrypt_xor_basic(dst, src, SCRYPT_BLOCK_BYTES);
 }
-
-#endif
 
 /* returns a pointer to item i, where item is len bytes long */
 static uint8_t *

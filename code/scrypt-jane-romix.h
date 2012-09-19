@@ -2,11 +2,11 @@
 typedef void (FASTCALL *scrypt_ROMixfn)(uint8_t *X/*[chunkBytes]*/, uint8_t *Y/*[chunkBytes]*/, uint8_t *V/*[chunkBytes * N]*/, uint32_t N, uint32_t r);
 #endif
 
-static void
+static void STDCALL
 scrypt_romix_nop(uint32_t *blocks, size_t count) {
 }
 
-static void
+static void STDCALL
 scrypt_romix_convert_endian(uint32_t *blocks, size_t count) {
 #if !defined(CPU_LE)
 	static const union { uint8_t b[2]; uint16_t w; } endian_test = {{1,0}};
@@ -19,31 +19,30 @@ scrypt_romix_convert_endian(uint32_t *blocks, size_t count) {
 #endif
 }
 
-typedef void (*mixfn)(uint32_t *block);
-typedef void (*blockfixfn)(uint32_t *blocks, size_t count);
+typedef void (STDCALL *chunkmixfn)(uint8_t *Bout/*[chunkBytes]*/, uint8_t *Bin/*[chunkBytes]*/, uint32_t r);
+typedef void (STDCALL *blockfixfn)(uint32_t *blocks, size_t count);
 
 static int
-scrypt_test_mix_instance(mixfn mixfn, blockfixfn prefn, blockfixfn postfn, const uint8_t expected[16]) {
-	uint32_t MM16 block[16], v;
+scrypt_test_mix_instance(chunkmixfn mixfn, blockfixfn prefn, blockfixfn postfn, const uint8_t expected[16]) {
+	uint32_t MM16 chunk[64], v;
 	uint8_t final[16];
 	size_t i;
 
-	for (i = 0; i < 16; i++) {
+	for (i = 0; i < 64; i++) {
 		v = (uint32_t)i;
 		v = (v << 8) | v;
 		v = (v << 16) | v;
-		block[i] = v;
+		chunk[i] = v;
 	}
 
-	prefn(block, 1);
-	for (i = 0; i < 257; i++)
-		mixfn(block);
-	postfn(block, 1);
+	prefn(chunk, 4);
+	mixfn((uint8_t *)chunk, (uint8_t *)chunk, 2);
+	postfn(chunk, 4);
 
-	U32TO8_LE(final + 0, block[0]);
-	U32TO8_LE(final + 4, block[1]);
-	U32TO8_LE(final + 8, block[2]);
-	U32TO8_LE(final + 12, block[3]);
+	U32TO8_LE(final + 0, chunk[60]);
+	U32TO8_LE(final + 4, chunk[61]);
+	U32TO8_LE(final + 8, chunk[62]);
+	U32TO8_LE(final + 12, chunk[63]);
 
 	return scrypt_verify(expected, final, 16);
 }

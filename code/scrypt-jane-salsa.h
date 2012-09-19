@@ -1,6 +1,5 @@
 #define SCRYPT_MIX_BASE "Salsa20/8"
 
-/* romix sse is currently hardcoded to 64 bytes */
 #define SCRYPT_BLOCK_BYTES 64
 
 /* must have these here in case block bytes is ever != 64 */
@@ -20,19 +19,7 @@
 	#define SCRYPT_MIX_FN salsa_core_sse2
 	#define SCRYPT_ROMIX_TANGLE_FN salsa_core_tangle_sse2
 	#define SCRYPT_ROMIX_UNTANGLE_FN salsa_core_untangle_sse2
-	#include "scrypt-jane-romix-template.h"
-#endif
-
-#if defined(SCRYPT_BLOCKOP_SSE)
-	#define SCRYPT_CHUNKMIX_FN scrypt_ChunkMix_sse
-	#define SCRYPT_ROMIX_FN scrypt_ROMix_sse
-	#define SCRYPT_BLOCK_COPY_FN scrypt_block_copy_sse
-	#define SCRYPT_BLOCK_XOR_FN scrypt_block_xor_sse
-	#define SCRYPT_COPY_FN scrypt_copy_sse
-	#define SCRYPT_XOR_FN scrypt_xor_sse
-	#define SCRYPT_MIX_FN salsa_core_basic
-	#define SCRYPT_ROMIX_TANGLE_FN scrypt_romix_nop
-	#define SCRYPT_ROMIX_UNTANGLE_FN scrypt_romix_nop
+	#define SCRYPT_ROMIX_OVERRIDE_CHUNKMIX
 	#include "scrypt-jane-romix-template.h"
 #endif
 
@@ -59,20 +46,29 @@ scrypt_getROMix() {
 	else
 #endif
 
-#if defined(SCRYPT_BLOCKOP_SSE)
-	if (cpuflags & cpu_sse)
-		return scrypt_ROMix_sse;
-	else
-#endif
-
 	return scrypt_ROMix_basic;
 }
 #endif
 
+
+#if defined(SCRYPT_TEST_SPEED)
+static size_t
+available_implementations() {
+	size_t flags = 0;
+
+#if defined(SCRYPT_SALSA_SSE2)
+		flags |= cpu_sse2;
+#endif
+
+	return flags;
+}
+#endif
+
+
 static int
 scrypt_test_mix() {
 	static const uint8_t expected[16] = {
-		0x14,0xd7,0x68,0x8f,0x49,0x9d,0xa9,0x99,0x2a,0x42,0x7e,0x52,0x75,0x92,0x8d,0x00,
+		0x27,0x30,0x24,0x5f,0x07,0xa4,0x85,0x47,0xe4,0xef,0x13,0x81,0x3a,0x62,0x4f,0x8c,
 	};
 
 	int ret = 1;
@@ -80,11 +76,11 @@ scrypt_test_mix() {
 
 #if defined(SCRYPT_SALSA_SSE2)
 	if (cpuflags & cpu_sse2)
-		ret &= scrypt_test_mix_instance(salsa_core_sse2, salsa_core_tangle_sse2, salsa_core_untangle_sse2, expected);
+		ret &= scrypt_test_mix_instance(scrypt_ChunkMix_sse2, salsa_core_tangle_sse2, salsa_core_untangle_sse2, expected);
 #endif
 
 #if defined(SCRYPT_SALSA_BASIC)
-	ret &= scrypt_test_mix_instance(salsa_core_basic, scrypt_romix_nop, scrypt_romix_nop, expected);
+	ret &= scrypt_test_mix_instance(scrypt_ChunkMix_basic, scrypt_romix_convert_endian, scrypt_romix_convert_endian, expected);
 #endif
 
 	return ret;

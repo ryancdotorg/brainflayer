@@ -252,6 +252,10 @@ get_cpuid(x86_regs *regs, uint32_t flags) {
 #endif
 }
 
+#if defined(SCRYPT_TEST_SPEED)
+size_t cpu_detect_mask = (size_t)-1;
+#endif
+
 static size_t
 detect_cpu(void) {
 	union { uint8_t s[12]; uint32_t i[3]; } vendor_string;
@@ -293,7 +297,26 @@ detect_cpu(void) {
 	if (regs.edx & (1 << 26)) cpu_flags |= cpu_sse2;
 	if (regs.edx & (1 << 25)) cpu_flags |= cpu_sse;
 	if (regs.edx & (1 << 23)) cpu_flags |= cpu_mmx;
+	
+#if defined(SCRYPT_TEST_SPEED)
+	cpu_flags &= cpu_detect_mask;
+#endif
+
 	return cpu_flags;
 }
+
+#if defined(SCRYPT_TEST_SPEED)
+static const char *
+get_top_cpuflag_desc(size_t flag) {
+	if (flag & cpu_sse4_2) return "SSE4.2";
+	else if (flag & cpu_sse4_1) return "SSE4.1";
+	else if (flag & cpu_ssse3) return "SSSE3";
+	else if (flag & cpu_sse2) return "SSE2";
+	else if (flag & cpu_sse) return "SSE";
+	else if (flag & cpu_mmx) return "MMX";
+	else return "Basic";
+}
+#endif
+
 
 #endif /* defined(CPU_X86) || defined(CPU_X86_64) */

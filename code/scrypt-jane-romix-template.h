@@ -8,12 +8,13 @@
 #undef SCRYPT_HAVE_ROMIX
 #define SCRYPT_HAVE_ROMIX
 
+#if !defined(SCRYPT_ROMIX_OVERRIDE_CHUNKMIX)
 /*
 	Bout = ChunkMix(Bin)
 
 	2*r: number of blocks in the chunk
 */
-static void NOINLINE
+static void STDCALL
 SCRYPT_CHUNKMIX_FN(uint8_t *Bout/*[chunkBytes]*/, uint8_t *Bin/*[chunkBytes]*/, uint32_t r) {
 	uint8_t MM16 X[SCRYPT_BLOCK_BYTES];
 	uint32_t i, blocksPerChunk = r * 2, half = 0;
@@ -33,6 +34,7 @@ SCRYPT_CHUNKMIX_FN(uint8_t *Bout/*[chunkBytes]*/, uint8_t *Bin/*[chunkBytes]*/, 
 		SCRYPT_BLOCK_COPY_FN(scrypt_block(Bout, (i / 2) + half), X);
 	}
 }
+#endif
 
 /*
 	X = ROMix(X)
@@ -103,3 +105,4 @@ SCRYPT_ROMIX_FN(uint8_t *X/*[chunkBytes]*/, uint8_t *Y/*[chunkBytes]*/, uint8_t 
 #undef SCRYPT_MIX_FN
 #undef SCRYPT_ROMIX_TANGLE_FN
 #undef SCRYPT_ROMIX_UNTANGLE_FN
+#undef SCRYPT_ROMIX_OVERRIDE_CHUNKMIX

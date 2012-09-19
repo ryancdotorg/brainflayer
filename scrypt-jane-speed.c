@@ -1,7 +1,4 @@
-#define SCRYPT_BLAKE256
-#define SCRYPT_CHACHA
-
-//#define SCRYPT_TEST_SPEED
+#define SCRYPT_TEST_SPEED
 #include "scrypt-jane.c"
 
 /* ticks - not tested on anything other than x86 */
@@ -70,8 +67,7 @@ int main() {
 	uint8_t password[64], salt[24], digest[64];
 	uint64_t ticks;
 	size_t i, passes;
-
-	printf("speed test for scrypt[%s,%s]\n", SCRYPT_HASH, SCRYPT_MIX);
+	size_t cpuflags, topbit;
 
 	for (i = 0; i < sizeof(password); i++)
 		password[i] = (uint8_t)i;
@@ -81,14 +77,40 @@ int main() {
 	/* warm up a little */
 	scrypt(password, sizeof(password), salt, sizeof(salt), 14, 3, 4, digest, sizeof(digest));
 
-	for (i = 0; settings[i].desc; i++) {
-		s = &settings[i];
-		ticks = maxticks;
-		for (passes = 0; passes < 8; passes++)
-			timeit(scrypt(password, sizeof(password), salt, sizeof(salt), s->Nfactor, s->rfactor, s->pfactor, digest, sizeof(digest)), ticks)
+	cpuflags = available_implementations();
+	topbit = 0;
+	for (i = cpuflags; i != 0; i >>= 1)
+		topbit++;
+	topbit = (1 << topbit);
 
-		printf("%s, %.0f ticks\n", s->desc, (double)ticks);
+	while (1) {
+	#if defined(SCRYPT_CHOOSE_COMPILETIME)
+		printf("speed test for scrypt[%s,%s]\n", SCRYPT_HASH, SCRYPT_MIX);
+	#else
+		printf("speed test for scrypt[%s,%s,%s]\n", SCRYPT_HASH, SCRYPT_MIX, get_top_cpuflag_desc(cpuflags));
+	#endif
+
+		cpu_detect_mask = cpuflags;
+		for (i = 0; settings[i].desc; i++) {
+			s = &settings[i];
+			ticks = maxticks;
+			for (passes = 0; passes < 8; passes++)
+				timeit(scrypt(password, sizeof(password), salt, sizeof(salt), s->Nfactor, s->rfactor, s->pfactor, digest, sizeof(digest)), ticks)
+
+			printf("%s, %.0f ticks\n", s->desc, (double)ticks);
+		}
+
+	#if defined(SCRYPT_CHOOSE_COMPILETIME)
+		break;
+	#else
+		if (!cpuflags)
+			break;
+		while (topbit && ((cpuflags & topbit) == 0)) 
+			topbit >>= 1;
+		cpuflags &= ~topbit;
+	#endif
 	}
+
 	printf("\n\n");
 
 	return 0;

@@ -1,6 +1,5 @@
 #define SCRYPT_MIX_BASE "ChaCha20/8"
 
-/* romix sse is currently hardcoded to 64 bytes */
 #define SCRYPT_BLOCK_BYTES 64
 
 /* must have these here in case block bytes is ever != 64 */
@@ -21,6 +20,7 @@
 	#define SCRYPT_MIX_FN chacha_core_ssse3
 	#define SCRYPT_ROMIX_TANGLE_FN scrypt_romix_nop
 	#define SCRYPT_ROMIX_UNTANGLE_FN scrypt_romix_nop
+	#define SCRYPT_ROMIX_OVERRIDE_CHUNKMIX
 	#include "scrypt-jane-romix-template.h"
 #endif
 
@@ -34,19 +34,7 @@
 	#define SCRYPT_MIX_FN chacha_core_sse2
 	#define SCRYPT_ROMIX_TANGLE_FN scrypt_romix_nop
 	#define SCRYPT_ROMIX_UNTANGLE_FN scrypt_romix_nop
-	#include "scrypt-jane-romix-template.h"
-#endif
-
-#if defined(SCRYPT_BLOCKOP_SSE)
-	#define SCRYPT_CHUNKMIX_FN scrypt_ChunkMix_sse
-	#define SCRYPT_ROMIX_FN scrypt_ROMix_sse
-	#define SCRYPT_BLOCK_COPY_FN scrypt_block_copy_sse
-	#define SCRYPT_BLOCK_XOR_FN scrypt_block_xor_sse
-	#define SCRYPT_COPY_FN scrypt_copy_sse
-	#define SCRYPT_XOR_FN scrypt_xor_sse
-	#define SCRYPT_MIX_FN chacha_core_basic
-	#define SCRYPT_ROMIX_TANGLE_FN scrypt_romix_nop
-	#define SCRYPT_ROMIX_UNTANGLE_FN scrypt_romix_nop
+	#define SCRYPT_ROMIX_OVERRIDE_CHUNKMIX
 	#include "scrypt-jane-romix-template.h"
 #endif
 
@@ -78,21 +66,32 @@ scrypt_getROMix() {
 	else
 #endif
 
-#if defined(SCRYPT_BLOCKOP_SSE)
-	if (cpuflags & cpu_sse)
-		return scrypt_ROMix_sse;
-	else
-#endif
-
 	return scrypt_ROMix_basic;
 }
 #endif
 
 
+#if defined(SCRYPT_TEST_SPEED)
+static size_t
+available_implementations() {
+	size_t flags = 0;
+
+#if defined(SCRYPT_CHACHA_SSSE3)
+	flags |= cpu_ssse3;
+#endif
+
+#if defined(SCRYPT_CHACHA_SSE2)
+		flags |= cpu_sse2;
+#endif
+
+	return flags;
+}
+#endif
+
 static int
 scrypt_test_mix() {
 	static const uint8_t expected[16] = {
-		0xd8,0xf2,0x0f,0xab,0xa0,0x4d,0xb9,0x6a,0x9a,0xbd,0x3d,0x9c,0xac,0xa6,0x0d,0x19,
+		0x16,0x90,0xc1,0x49,0x8c,0xfb,0x17,0x89,0x81,0x17,0x83,0x96,0xc4,0x6c,0x75,0xcf,
 	};
 
 	int ret = 1;
@@ -100,16 +99,16 @@ scrypt_test_mix() {
 
 #if defined(SCRYPT_CHACHA_SSSE3)
 	if (cpuflags & cpu_ssse3)
-		ret &= scrypt_test_mix_instance(chacha_core_ssse3, scrypt_romix_nop, scrypt_romix_nop, expected);
+		ret &= scrypt_test_mix_instance(scrypt_ChunkMix_ssse3, scrypt_romix_nop, scrypt_romix_nop, expected);
 #endif
 
 #if defined(SCRYPT_CHACHA_SSE2)
 	if (cpuflags & cpu_sse2)
-		ret &= scrypt_test_mix_instance(chacha_core_sse2, scrypt_romix_nop, scrypt_romix_nop, expected);
+		ret &= scrypt_test_mix_instance(scrypt_ChunkMix_sse2, scrypt_romix_nop, scrypt_romix_nop, expected);
 #endif
 
 #if defined(SCRYPT_CHACHA_BASIC)
-	ret &= scrypt_test_mix_instance(chacha_core_basic, scrypt_romix_nop, scrypt_romix_nop, expected);
+	ret &= scrypt_test_mix_instance(scrypt_ChunkMix_basic, scrypt_romix_convert_endian, scrypt_romix_convert_endian, expected);
 #endif
 
 	return ret;
