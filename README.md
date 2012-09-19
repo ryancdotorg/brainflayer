@@ -11,7 +11,7 @@ The code uses a modular (compile, not runtime) layout to allow new mixing & hash
 * [Salsa20/8](http://cr.yp.to/salsa20.html)
 * [ChaCha20/8](http://cr.yp.to/chacha.html)
 
-I am not actually aware of any other candidates for a decent mix function. Salsa20/8 was nearly perfect, but its successor, ChaCha20/8, has better diffusion and is thus stronger, is potentially faster given advanced SIMD support (byte level shuffles, or a 32bit rotate), and is slightly cleaner to implement give that it requires no pre/post processing of data for SIMD implementations. 
+I am not actually aware of any other candidates for a decent mix function. Salsa20/8 was nearly perfect, but its successor, ChaCha20/8, has better diffusion and is thus stronger, is potentially faster given advanced SIMD support (byte level shuffles, or a 32bit rotate), and is slightly cleaner to implement given that it requires no pre/post processing of data for SIMD implementations. 
 
 While everything is mostly generic, there are a few places that are hardcoded to assume a 64-byte block size so these would need to be modularized-ish if a mixing function with a different block size is added.
 
@@ -49,7 +49,7 @@ Three different scrypt settings are tested (the last two are from the scrypt pap
 * 'Interactive': N=16384, r=8, p=1, 16mb memory
 * 'Non-Interactive': N=1048576, r=8, p=1, 1gb memory
 
-Cycle counts are in millions of cycles. All versions compiled with gcc 4.4.5, -O3.
+Cycle counts are in millions of cycles. All versions compiled with gcc 4.4.5, -O3. Sorted from fastest to slowest.
 
 
 <table>
@@ -61,14 +61,14 @@ Cycle counts are in millions of cycles. All versions compiled with gcc 4.4.5, -O
 <tr><td>scrypt-jane SSE2 32bit </td><td>Salsa20/8 </td><td>26.2m</td><td>107.4m</td><td> 7095.9m</td></tr>
 <tr><td>scrypt-jane SSE2 64bit </td><td>ChaCha20/8</td><td>27.9m</td><td>114.5m</td><td> 7495.6m</td></tr>
 <tr><td>scrypt-jane SSE2 32bit </td><td>ChaCha20/8</td><td>28.3m</td><td>115.7m</td><td> 7624.3m</td></tr>
-<tr><td>Reference SSE2 64bit   </td><td>Salsa20/8 </td><td>33.5m</td><td>137.7m</td><td> 9044.4m</td></tr>
-<tr><td>Reference SSE2 32bit   </td><td>Salsa20/8 </td><td>34.2m</td><td>138.8m</td><td> 9124.6m</td></tr>
+<tr><td>*Reference SSE2 64bit* </td><td>Salsa20/8 </td><td>33.5m</td><td>137.7m</td><td> 9044.4m</td></tr>
+<tr><td>*Reference SSE2 32bit* </td><td>Salsa20/8 </td><td>34.2m</td><td>138.8m</td><td> 9124.6m</td></tr>
 <tr><td>scrypt-jane 64bit      </td><td>ChaCha20/8</td><td>37.2m</td><td>152.5m</td><td>10049.4m</td></tr>
-<tr><td>Reference 64bit        </td><td>Salsa20/8 </td><td>40.1m</td><td>164.1m</td><td>10788.6m</td></tr>
+<tr><td>*Reference 64bit*      </td><td>Salsa20/8 </td><td>40.1m</td><td>164.1m</td><td>10788.6m</td></tr>
 <tr><td>scrypt-jane 64bit      </td><td>Salsa20/8 </td><td>41.3m</td><td>169.1m</td><td>11178.2m</td></tr>
 <tr><td>scrypt-jane 32bit      </td><td>ChaCha20/8</td><td>52.7m</td><td>213.3m</td><td>13839.4m</td></tr>
 <tr><td>scrypt-jane 32bit      </td><td>Salsa20/8 </td><td>68.0m</td><td>272.4m</td><td>17714.2m</td></tr>
-<tr><td>Reference 32bit        </td><td>Salsa20/8 </td><td>70.0m</td><td>283.2m</td><td>18398.2m</td></tr>
+<tr><td>*Reference 32bit*      </td><td>Salsa20/8 </td><td>70.0m</td><td>283.2m</td><td>18398.2m</td></tr>
 </tbody>
 </table>
 
@@ -117,3 +117,7 @@ In scrypt terms
 * p = (1 << pfactor), which controls how many passes to perform over the set of N chunks. Increasing p increases CPU time used.
 
 I chose to use the log2 of each parameter as it is the common way to communicate settings (e.g. 2^20, not 1048576).
+
+# License
+
+Public Domain, or MIT

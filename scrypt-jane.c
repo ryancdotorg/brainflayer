@@ -1,3 +1,9 @@
+/*
+	scrypt-jane by Andrew M, https://github.com/floodyberry/scrypt-jane
+
+	Public Domain or MIT License, whichever is easier
+*/
+
 #include <string.h>
 
 #include "scrypt-jane.h"
