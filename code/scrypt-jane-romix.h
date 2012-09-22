@@ -23,7 +23,7 @@ typedef void (STDCALL *blockfixfn)(uint32_t *blocks, size_t count);
 
 static int
 scrypt_test_mix_instance(chunkmixfn mixfn, blockfixfn prefn, blockfixfn postfn, const uint8_t expected[16]) {
-	uint32_t MM16 chunk[64], v;
+	uint32_t MM16 chunk[2][64], v;
 	uint8_t final[16];
 	size_t i;
 
@@ -31,17 +31,17 @@ scrypt_test_mix_instance(chunkmixfn mixfn, blockfixfn prefn, blockfixfn postfn, 
 		v = (uint32_t)i;
 		v = (v << 8) | v;
 		v = (v << 16) | v;
-		chunk[i] = v;
+		chunk[0][i] = v;
 	}
 
-	prefn(chunk, 4);
-	mixfn(chunk, chunk, 2);
-	postfn(chunk, 4);
+	prefn(chunk[0], 4);
+	mixfn(chunk[1], chunk[0], 2);
+	postfn(chunk[1], 4);
 
-	U32TO8_LE(final + 0, chunk[60]);
-	U32TO8_LE(final + 4, chunk[61]);
-	U32TO8_LE(final + 8, chunk[62]);
-	U32TO8_LE(final + 12, chunk[63]);
+	U32TO8_LE(final + 0, chunk[1][60]);
+	U32TO8_LE(final + 4, chunk[1][61]);
+	U32TO8_LE(final + 8, chunk[1][62]);
+	U32TO8_LE(final + 12, chunk[1][63]);
 
 	return scrypt_verify(expected, final, 16);
 }
