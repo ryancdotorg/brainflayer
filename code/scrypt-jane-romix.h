@@ -3,23 +3,24 @@ typedef void (FASTCALL *scrypt_ROMixfn)(uint32_t *X/*[chunkDWords]*/, uint32_t *
 #endif
 
 static void STDCALL
-scrypt_romix_nop(uint32_t *blocks, size_t count) {
+scrypt_romix_nop(uint32_t *blocks, size_t nblocks) {
 }
 
 static void STDCALL
-scrypt_romix_convert_endian(uint32_t *blocks, size_t count) {
+scrypt_romix_convert_endian(uint32_t *blocks, size_t nblocks) {
 #if !defined(CPU_LE)
 	static const union { uint8_t b[2]; uint16_t w; } endian_test = {{1,0}};
 	size_t i;
 	if (endian_test.w == 0x100) {
-		for (i = 0; i < count; i++)
+		nblocks *= SCRYPT_BLOCK_DWORDS;
+		for (i = 0; i < nblocks; i++)
 			U32_SWAP(blocks[i]);
 	}
 #endif
 }
 
 typedef void (STDCALL *chunkmixfn)(uint32_t *Bout/*[chunkDWords]*/, uint32_t *Bin/*[chunkDWords]*/, uint32_t r);
-typedef void (STDCALL *blockfixfn)(uint32_t *blocks, size_t count);
+typedef void (STDCALL *blockfixfn)(uint32_t *blocks, size_t nblocks);
 
 static int
 scrypt_test_mix_instance(chunkmixfn mixfn, blockfixfn prefn, blockfixfn postfn, const uint8_t expected[16]) {
