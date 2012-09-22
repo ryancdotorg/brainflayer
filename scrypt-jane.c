@@ -80,13 +80,13 @@ static size_t mem_bump = 0;
 /* allocations are assumed to be multiples of 64 bytes and total allocations not to exceed ~1.01gb */
 static scrypt_aligned_alloc
 scrypt_alloc(uint64_t size) {
+	scrypt_aligned_alloc aa;
 	if (!mem_base) {
 		mem_base = (uint8_t *)malloc((1024 * 1024 * 1024) + (1024 * 1024) + 63);
 		if (!mem_base)
 			scrypt_fatal_error("scrypt: out of memory");
 		mem_base = (uint8_t *)(((size_t)mem_base + 63) & ~63);
 	}
-	scrypt_aligned_alloc aa;
 	aa.mem = mem_base + mem_bump;
 	aa.ptr = aa.mem;
 	mem_bump += (size_t)size;
@@ -160,7 +160,7 @@ scrypt(const uint8_t *password, size_t password_len, const uint8_t *salt, size_t
 
 	/* 2: X = ROMix(X) */
 	for (i = 0; i < p; i++)
-		scrypt_ROMix(X + (chunk_bytes * i), Y, V.ptr, N, r);
+		scrypt_ROMix((uint32_t *)(X + (chunk_bytes * i)), (uint32_t *)Y, (uint32_t *)V.ptr, N, r);
 
 	/* 3: Out = PBKDF2(password, X) */
 	scrypt_pbkdf2(password, password_len, X, chunk_bytes * p, 1, out, bytes);

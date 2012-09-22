@@ -6,7 +6,7 @@
 #define SCRYPT_BLOCKOP_SSE
 
 static void INLINE
-scrypt_copy_sse(uint8_t *dst, const uint8_t *src, uint32_t len) {
+scrypt_copy_sse(uint32_t *dst, const uint32_t *src, uint32_t len) {
 	asm_gcc()
 		a2(sub %2, %1)
 		a1(1:)
@@ -19,7 +19,7 @@ scrypt_copy_sse(uint8_t *dst, const uint8_t *src, uint32_t len) {
 		a2(movaps [%1+32], xmm2)
 		a2(movaps [%1+48], xmm3)
 		a2(add %1, 64)
-		a2(sub %0, 64)
+		a2(sub %0, 16)
 		a1(jnz 1b)
 		asm_gcc_parms() : "+r"(len), "+r"(dst), "+r"(src) :: "cc", "memory"
 #if defined(SYSTEM_SSE)
@@ -29,7 +29,7 @@ scrypt_copy_sse(uint8_t *dst, const uint8_t *src, uint32_t len) {
 }
 
 static void INLINE
-scrypt_xor_sse(uint8_t *dst, const uint8_t *src, uint32_t len) {
+scrypt_xor_sse(uint32_t *dst, const uint32_t *src, uint32_t len) {
 	asm_gcc()
 		a2(sub %2, %1)
 		a1(1:)
@@ -50,7 +50,7 @@ scrypt_xor_sse(uint8_t *dst, const uint8_t *src, uint32_t len) {
 		a2(movaps [%1+32], xmm2)
 		a2(movaps [%1+48], xmm3)
 		a2(add %1, 64)
-		a2(sub %0, 64)
+		a2(sub %0, 16)
 		a1(jnz 1b)
 		asm_gcc_parms() : "+r"(len), "+r"(dst), "+r"(src) :: "cc", "memory"
 #if defined(SYSTEM_SSE)
@@ -65,25 +65,40 @@ scrypt_xor_sse(uint8_t *dst, const uint8_t *src, uint32_t len) {
 /* intrinsics */
 #if defined(X86_INTRINSIC_SSE)
 static void INLINE
-scrypt_copy_sse(uint8_t *dst, const uint8_t *src, uint32_t len) {
-	xmm *d = (xmm *)dst, *s = (xmm *)src;
-	for (len /= 64; len; len--, d += 4, s += 4) {
-		d[0] = s[0];
-		d[1] = s[1];
-		d[2] = s[2];
-		d[3] = s[3];
+scrypt_copy_sse(uint32_t *dst, const uint32_t *src, uint32_t len) {
+	xmm x0,x1,x2,x3;
+	for (len /= 16; len; len--, dst += 16, src += 16) {
+		x0 = _mm_load_ps((float *)src + 0);
+		x1 = _mm_load_ps((float *)src + 4);
+		x2 = _mm_load_ps((float *)src + 8);
+		x3 = _mm_load_ps((float *)src + 12);
+		_mm_store_ps((float *)dst + 0, x0);
+		_mm_store_ps((float *)dst + 4, x1);
+		_mm_store_ps((float *)dst + 8, x2);
+		_mm_store_ps((float *)dst + 12, x3);
 	}
 }
 
 static void INLINE
-scrypt_xor_sse(uint8_t *dst, const uint8_t *src, uint32_t len) {
-	xmm *d = (xmm *)dst;
-	const xmm *s = (const xmm *)src;
-	for (len /= 64; len; len--, d += 4, s += 4) {
-		d[0] = _mm_xor_ps(d[0], s[0]);
-		d[1] = _mm_xor_ps(d[1], s[1]);
-		d[2] = _mm_xor_ps(d[2], s[2]);
-		d[3] = _mm_xor_ps(d[3], s[3]);
+scrypt_xor_sse(uint32_t *dst, const uint32_t *src, uint32_t len) {
+	xmm x0,x1,x2,x3,x4,x5,x6,x7;
+	for (len /= 16; len; len--, dst += 16, src += 16) {
+		x0 = _mm_load_ps((float *)src + 0);
+		x1 = _mm_load_ps((float *)src + 4);
+		x2 = _mm_load_ps((float *)src + 8);
+		x3 = _mm_load_ps((float *)src + 12);
+		x4 = _mm_load_ps((float *)dst + 0);
+		x5 = _mm_load_ps((float *)dst + 4);
+		x6 = _mm_load_ps((float *)dst + 8);
+		x7 = _mm_load_ps((float *)dst + 12);
+		x0 = _mm_xor_ps(x0, x4);
+		x1 = _mm_xor_ps(x1, x5);
+		x2 = _mm_xor_ps(x2, x6);
+		x3 = _mm_xor_ps(x3, x7);
+		_mm_store_ps((float *)dst + 0, x0);
+		_mm_store_ps((float *)dst + 4, x1);
+		_mm_store_ps((float *)dst + 8, x2);
+		_mm_store_ps((float *)dst + 12, x3);
 	}
 }
 #endif

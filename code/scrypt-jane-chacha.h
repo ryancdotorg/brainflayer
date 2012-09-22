@@ -1,6 +1,7 @@
 #define SCRYPT_MIX_BASE "ChaCha20/8"
 
 #define SCRYPT_BLOCK_BYTES 64
+#define SCRYPT_BLOCK_DWORDS (SCRYPT_BLOCK_BYTES / sizeof(uint32_t))
 
 /* must have these here in case block bytes is ever != 64 */
 #include "scrypt-jane-romix-sse.h"

@@ -1,5 +1,5 @@
 #if !defined(SCRYPT_CHOOSE_COMPILETIME)
-typedef void (FASTCALL *scrypt_ROMixfn)(uint8_t *X/*[chunkBytes]*/, uint8_t *Y/*[chunkBytes]*/, uint8_t *V/*[chunkBytes * N]*/, uint32_t N, uint32_t r);
+typedef void (FASTCALL *scrypt_ROMixfn)(uint32_t *X/*[chunkDWords]*/, uint32_t *Y/*[chunkDWords]*/, uint32_t *V/*[chunkDWords * N]*/, uint32_t N, uint32_t r);
 #endif
 
 static void STDCALL
@@ -12,14 +12,13 @@ scrypt_romix_convert_endian(uint32_t *blocks, size_t count) {
 	static const union { uint8_t b[2]; uint16_t w; } endian_test = {{1,0}};
 	size_t i;
 	if (endian_test.w == 0x100) {
-		count *= (SCRYPT_BLOCK_BYTES / 4);
-		while (count--)
-			U32_SWAP(blocks[0]);
+		for (i = 0; i < count; i++)
+			U32_SWAP(blocks[i]);
 	}
 #endif
 }
 
-typedef void (STDCALL *chunkmixfn)(uint8_t *Bout/*[chunkBytes]*/, uint8_t *Bin/*[chunkBytes]*/, uint32_t r);
+typedef void (STDCALL *chunkmixfn)(uint32_t *Bout/*[chunkDWords]*/, uint32_t *Bin/*[chunkDWords]*/, uint32_t r);
 typedef void (STDCALL *blockfixfn)(uint32_t *blocks, size_t count);
 
 static int
@@ -36,7 +35,7 @@ scrypt_test_mix_instance(chunkmixfn mixfn, blockfixfn prefn, blockfixfn postfn, 
 	}
 
 	prefn(chunk, 4);
-	mixfn((uint8_t *)chunk, (uint8_t *)chunk, 2);
+	mixfn(chunk, chunk, 2);
 	postfn(chunk, 4);
 
 	U32TO8_LE(final + 0, chunk[60]);
@@ -54,11 +53,12 @@ scrypt_test_mix_instance(chunkmixfn mixfn, blockfixfn prefn, blockfixfn postfn, 
 #else
 	#define SCRYPT_MIX_BASE "ERROR"
 	#define SCRYPT_BLOCK_BYTES 64
+	#define SCRYPT_BLOCK_DWORDS (SCRYPT_BLOCK_BYTES / sizeof(uint32_t))
 	#if !defined(SCRYPT_CHOOSE_COMPILETIME)
-		static void FASTCALL scrypt_ROMix_error(uint8_t *X/*[chunkBytes]*/, uint8_t *Y/*[chunkBytes]*/, uint8_t *V/*[chunkBytes * N]*/, uint32_t N, uint32_t r) {}
+		static void FASTCALL scrypt_ROMix_error(uint32_t *X/*[chunkDWords]*/, uint32_t *Y/*[chunkDWords]*/, uint32_t *V/*[chunkDWords * N]*/, uint32_t N, uint32_t r) {}
 		static scrypt_ROMixfn scrypt_getROMix() { return scrypt_ROMix_error; }
 	#else
-		static void FASTCALL scrypt_ROMix(uint8_t *X, uint8_t *Y, uint8_t *V, uint32_t N, uint32_t r) {}
+		static void FASTCALL scrypt_ROMix(uint32_t *X, uint32_t *Y, uint32_t *V, uint32_t N, uint32_t r) {}
 	#endif
 	static int scrypt_test_mix() { return 0; }
 	#error must define a mix function!

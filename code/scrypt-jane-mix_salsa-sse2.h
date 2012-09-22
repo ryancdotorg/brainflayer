@@ -87,7 +87,7 @@ asm_naked_fn(salsa_core_untangle_sse2)
 	a1(ret 8)
 asm_naked_fn_end(salsa_core_tangle_sse2)
 
-asm_naked_fn_proto(void, scrypt_ChunkMix_sse2)(uint8_t *Bout/*[chunkBytes]*/, uint8_t *Bin/*[chunkBytes]*/, uint32_t r)
+asm_naked_fn_proto(void, scrypt_ChunkMix_sse2)(uint32_t *Bout/*[chunkBytes]*/, uint32_t *Bin/*[chunkBytes]*/, uint32_t r)
 asm_naked_fn(scrypt_ChunkMix_sse2)
 	a1(push ebx)
 	a1(push edi)
@@ -297,7 +297,7 @@ asm_naked_fn(salsa_core_untangle_sse2)
 	a1(ret)
 asm_naked_fn_end(salsa_core_tangle_sse2)
 
-asm_naked_fn_proto(void, scrypt_ChunkMix_sse2)(uint8_t *Bout/*[chunkBytes]*/, uint8_t *Bin/*[chunkBytes]*/, uint32_t r)
+asm_naked_fn_proto(void, scrypt_ChunkMix_sse2)(uint32_t *Bout/*[chunkBytes]*/, uint32_t *Bin/*[chunkBytes]*/, uint32_t r)
 asm_naked_fn(scrypt_ChunkMix_sse2)
 	a2(lea rdx,[rdx*2])
 	a2(shl rdx,6)
@@ -425,7 +425,7 @@ asm_naked_fn_end(scrypt_ChunkMix_sse2)
 	 4  9 14  3
 */
 
-static void
+static void NOINLINE
 salsa_core_tangle_sse2(uint32_t *blocks, size_t count) {
 	xmmi *st = (xmmi *)blocks;
 	xmmi x0,x1,x2,x3;
@@ -471,7 +471,7 @@ salsa_core_tangle_sse2(uint32_t *blocks, size_t count) {
 	}
 }
 
-static void
+static void NOINLINE
 salsa_core_untangle_sse2(uint32_t *blocks, size_t count) {
 	xmmi *st = (xmmi *)blocks;
 	xmmi x0,x1,x2,x3;
@@ -516,8 +516,8 @@ salsa_core_untangle_sse2(uint32_t *blocks, size_t count) {
 	}
 }
 
-static void
-scrypt_ChunkMix_sse2(uint8_t *Bout/*[chunkBytes]*/, uint8_t *Bin/*[chunkBytes]*/, uint32_t r) {
+static void NOINLINE
+scrypt_ChunkMix_sse2(uint32_t *Bout/*[chunkBytes]*/, uint32_t *Bin/*[chunkBytes]*/, uint32_t r) {
 	uint32_t i, blocksPerChunk = r * 2, half = 0;
 	xmmi *xmmp,x0,x1,x2,x3,x4,x5,t0,t1,t2,t3;
 	size_t rounds;

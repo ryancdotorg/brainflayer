@@ -3,7 +3,7 @@
 
 #define SCRYPT_CHACHA_SSSE3
 
-asm_naked_fn_proto(void, scrypt_ChunkMix_ssse3)(uint8_t *Bout/*[chunkBytes]*/, uint8_t *Bin/*[chunkBytes]*/, uint32_t r)
+asm_naked_fn_proto(void, scrypt_ChunkMix_ssse3)(uint32_t *Bout/*[chunkBytes]*/, uint32_t *Bin/*[chunkBytes]*/, uint32_t r)
 asm_naked_fn(scrypt_ChunkMix_ssse3)
 	a1(push ebx)
 	a1(push edi)
@@ -115,7 +115,7 @@ asm_naked_fn_end(scrypt_ChunkMix_ssse3)
 
 #define SCRYPT_CHACHA_SSSE3
 
-asm_naked_fn_proto(void, scrypt_ChunkMix_ssse3)(uint8_t *Bout/*[chunkBytes]*/, uint8_t *Bin/*[chunkBytes]*/, uint32_t r)
+asm_naked_fn_proto(void, scrypt_ChunkMix_ssse3)(uint32_t *Bout/*[chunkBytes]*/, uint32_t *Bin/*[chunkBytes]*/, uint32_t r)
 asm_naked_fn(scrypt_ChunkMix_ssse3)
 	a2(lea rdx,[rdx*2])
 	a2(shl rdx,6)
@@ -211,8 +211,8 @@ asm_naked_fn_end(scrypt_ChunkMix_ssse3)
 
 #define SCRYPT_CHACHA_SSSE3
 
-static void
-scrypt_ChunkMix_ssse3(uint8_t *Bout/*[chunkBytes]*/, uint8_t *Bin/*[chunkBytes]*/, uint32_t r) {
+static void NOINLINE
+scrypt_ChunkMix_ssse3(uint32_t *Bout/*[chunkBytes]*/, uint32_t *Bin/*[chunkBytes]*/, uint32_t r) {
 	uint32_t i, blocksPerChunk = r * 2, half = 0;
 	xmmi *xmmp,x0,x1,x2,x3,x6,t0,t1,t2,t3;
 	const xmmi x4 = *(xmmi *)&ssse3_rotl16_32bit, x5 = *(xmmi *)&ssse3_rotl8_32bit;
