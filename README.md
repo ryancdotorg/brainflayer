@@ -83,8 +83,8 @@ Cycle counts are in millions of cycles. All versions compiled with gcc 4.4.5, -O
 
 where SCRYPT_MIX is one of
 
-* SCYRPT_SALSA
-* SCYRPT_CHACHA
+* SCRYPT_SALSA
+* SCRYPT_CHACHA
 
 and SCRYPT_HASH is one of
 
@@ -93,6 +93,8 @@ and SCRYPT_HASH is one of
 * SCRYPT_BLAKE256
 * SCRYPT_BLAKE512
 * SCRYPT_SKEIN512
+* SCRYPT_KECCAK256
+* SCRYPT_KECCAK512
 
 e.g.
 
