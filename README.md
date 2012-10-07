@@ -20,10 +20,11 @@ While everything is mostly generic, there are a few places that are hardcoded to
 * SHA256/512
 * [BLAKE256/512](https://www.131002.net/blake/)
 * [Skein512](http://www.skein-hash.info/)
+* [Keccak256/512](http://keccak.noekeon.org/) (SHA-3)
 
 Hash function implementations, unlike mix functions, are not optimized. The PBKDF2 computations are relatively minor in the scrypt algorithm, so including CPU specific versions, or vastly unrolling loops, would serve little purpose while bloating the code, both source and binary, and making it more confusing to implement correctly.
 
-Most of the SHA-3 candidates fall in to the "annoying to read/implement" category and have not been included yet. This will of course be moot once ~~BLAKE is chosen as SHA-3~~ Keccak is chosen as SHA-3. Well shit.
+Most (now only two!) of the SHA-3 candidates fall in to the "annoying to read/implement" category and have not been included yet. This will of course be moot once ~~BLAKE is chosen as SHA-3~~ Keccak is chosen as SHA-3. Well shit.
 
 ## CPU Adaptation
 

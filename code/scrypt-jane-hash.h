@@ -8,6 +8,8 @@
 #include "scrypt-jane-hash_sha256.h"
 #elif defined(SCRYPT_SKEIN512)
 #include "scrypt-jane-hash_skein512.h"
+#elif defined(SCRYPT_KECCAK512) || defined(SCRYPT_KECCAK256)
+#include "scrypt-jane-hash_keccak.h"
 #else
 	#define SCRYPT_HASH "ERROR"
 	#define SCRYPT_HASH_BLOCK_SIZE 64

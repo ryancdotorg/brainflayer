@@ -29,6 +29,8 @@ testhashes() {
 	testhash BLAKE256 $1
 	testhash BLAKE512 $1
 	testhash SKEIN512 $1
+	testhash KECCAK256 $1
+	testhash KECCAK512 $1
 }
 
 if [ -z $1 ]; then
