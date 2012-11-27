@@ -50,31 +50,31 @@ Three different scrypt settings are tested (the last two are from the scrypt pap
 * 'Interactive': N=16384, r=8, p=1, 16mb memory
 * 'Non-Interactive': N=1048576, r=8, p=1, 1gb memory
 
-Cycle counts are in millions of cycles. All versions compiled with gcc 4.4.5, -O3. Sorted from fastest to slowest.
+Cycle counts are in millions of cycles. All versions compiled with gcc 4.6.3, -O3. Sorted from fastest to slowest.
 
 
 <table>
 <thead><tr><th>Implemenation</th><th>Algo</th><th>High Volume</th><th>Interactive</th><th>Non-Interactive</th></tr></thead>
 <tbody>
-<tr><td>scrypt-jane SSSE3 64bit</td><td>ChaCha20/8</td><td>23.9m</td><td> 97.1m</td><td> 6426.4m</td></tr>
-<tr><td>scrypt-jane SSSE3 32bit</td><td>ChaCha20/8</td><td>24.2m</td><td> 99.8m</td><td> 6618.2m</td></tr>
-<tr><td>scrypt-jane SSE2 64bit </td><td>Salsa20/8 </td><td>25.9m</td><td>106.8m</td><td> 6986.7m</td></tr>
-<tr><td>scrypt-jane SSE2 32bit </td><td>Salsa20/8 </td><td>26.2m</td><td>107.4m</td><td> 7095.9m</td></tr>
-<tr><td>scrypt-jane SSE2 64bit </td><td>ChaCha20/8</td><td>27.9m</td><td>114.5m</td><td> 7495.6m</td></tr>
-<tr><td>scrypt-jane SSE2 32bit </td><td>ChaCha20/8</td><td>28.3m</td><td>115.7m</td><td> 7624.3m</td></tr>
-<tr><td>*Reference SSE2 64bit* </td><td>Salsa20/8 </td><td>33.5m</td><td>137.7m</td><td> 9044.4m</td></tr>
-<tr><td>*Reference SSE2 32bit* </td><td>Salsa20/8 </td><td>34.2m</td><td>138.8m</td><td> 9124.6m</td></tr>
-<tr><td>scrypt-jane 64bit      </td><td>ChaCha20/8</td><td>37.2m</td><td>152.5m</td><td>10049.4m</td></tr>
+<tr><td>scrypt-jane SSSE3 64bit</td><td>ChaCha20/8</td><td>21.4m</td><td> 86.5m</td><td> 5695.8m</td></tr>
+<tr><td>scrypt-jane SSSE3 32bit</td><td>ChaCha20/8</td><td>21.7m</td><td> 87.5m</td><td> 5773.3m</td></tr>
+<tr><td>scrypt-jane SSE2 64bit </td><td>Salsa20/8 </td><td>23.7m</td><td> 95.3m</td><td> 6295.3m</td></tr>
+<tr><td>scrypt-jane SSE2 32bit </td><td>Salsa20/8 </td><td>23.8m</td><td> 96.0m</td><td> 6288.1m</td></tr>
+<tr><td>scrypt-jane SSE2 64bit </td><td>ChaCha20/8</td><td>25.9m</td><td>103.9m</td><td> 6812.9m</td></tr>
+<tr><td>scrypt-jane SSE2 32bit </td><td>ChaCha20/8</td><td>26.0m</td><td>105.2m</td><td> 6865.2m</td></tr>
+<tr><td>*Reference SSE2 64bit* </td><td>Salsa20/8 </td><td>32.9m</td><td>135.2m</td><td> 8881.6m</td></tr>
+<tr><td>*Reference SSE2 32bit* </td><td>Salsa20/8 </td><td>33.0m</td><td>134.4m</td><td> 8885.2m</td></tr>
+<tr><td>scrypt-jane 64bit      </td><td>ChaCha20/8</td><td>36.7m</td><td>148.1m</td><td> 9646.5m</td></tr>
+<tr><td>scrypt-jane 64bit      </td><td>Salsa20/8 </td><td>39.2m</td><td>153.7m</td><td>10052.7m</td></tr>
 <tr><td>*Reference 64bit*      </td><td>Salsa20/8 </td><td>40.1m</td><td>164.1m</td><td>10788.6m</td></tr>
-<tr><td>scrypt-jane 64bit      </td><td>Salsa20/8 </td><td>41.3m</td><td>169.1m</td><td>11178.2m</td></tr>
-<tr><td>scrypt-jane 32bit      </td><td>ChaCha20/8</td><td>52.7m</td><td>213.3m</td><td>13839.4m</td></tr>
-<tr><td>scrypt-jane 32bit      </td><td>Salsa20/8 </td><td>68.0m</td><td>272.4m</td><td>17714.2m</td></tr>
-<tr><td>*Reference 32bit*      </td><td>Salsa20/8 </td><td>70.0m</td><td>283.2m</td><td>18398.2m</td></tr>
+<tr><td>scrypt-jane 32bit      </td><td>ChaCha20/8</td><td>44.4m</td><td>179.4m</td><td>11681.4m</td></tr>
+<tr><td>scrypt-jane 32bit      </td><td>Salsa20/8 </td><td>55.5m</td><td>223.2m</td><td>14485.7m</td></tr>
+<tr><td>*Reference 32bit*      </td><td>Salsa20/8 </td><td>61.5m</td><td>248.9m</td><td>16186.9m</td></tr>
 </tbody>
 </table>
 
-* scrypt-jane ChaCha20/8-SSSE3 is ~1.4x faster than reference Salsa20/8-SSE2 
-* scrypt-jane Salsa20/8-SSE2 is ~1.3x faster than reference Salsa20/8-SSE2 
+* scrypt-jane ChaCha20/8-SSSE3 is ~1.52x faster than reference Salsa20/8-SSE2 
+* scrypt-jane Salsa20/8-SSE2 is ~1.38x faster than reference Salsa20/8-SSE2 
 * The non-SIMD implemenations have a lot of variance, but it is due to gcc optimizing poorly.
 
 # Building
@@ -100,6 +100,8 @@ e.g.
 
     gcc scrypt-jane.c -O3 -DSCRYPT_CHACHA -DSCRYPT_BLAKE512 -c
     gcc example.c scrypt-jane.o -o example
+
+clang *may* need "-no-integrated-as" as some? versions don't support .intel_syntax
 
 # Using
 
