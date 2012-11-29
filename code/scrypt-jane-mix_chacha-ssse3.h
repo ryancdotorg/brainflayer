@@ -3,7 +3,7 @@
 
 #define SCRYPT_CHACHA_SSSE3
 
-asm_naked_fn_proto(void, scrypt_ChunkMix_ssse3)(uint32_t *Bout/*[chunkBytes]*/, uint32_t *Bin/*[chunkBytes]*/, uint32_t r)
+asm_naked_fn_proto(void, scrypt_ChunkMix_ssse3)(uint32_t *Bout/*[chunkBytes]*/, uint32_t *Bin/*[chunkBytes]*/, uint32_t *Bxor/*[chunkBytes]*/, uint32_t r)
 asm_naked_fn(scrypt_ChunkMix_ssse3)
 	a1(push ebx)
 	a1(push edi)
@@ -12,26 +12,40 @@ asm_naked_fn(scrypt_ChunkMix_ssse3)
 	a2(mov ebp,esp)
 	a2(mov edi,[ebp+20])
 	a2(mov esi,[ebp+24])
-	a2(mov ebx,[ebp+28])
+	a2(mov eax,[ebp+28])
+	a2(mov ebx,[ebp+32])
 	a2(sub esp,64)
 	a2(and esp,~63)
 	a2(lea edx,[ebx*2])
 	a2(shl edx,6)
-	a2(lea eax,[edx-64])
-	a2(add eax,esi)
-	a2(xor ecx,ecx)
-	a2(xor ebx,ebx)
+	a2(lea ecx,[edx-64])
+	a2(and eax, eax)
 	a2(movdqa xmm4,[ssse3_rotl16_32bit])
 	a2(movdqa xmm5,[ssse3_rotl8_32bit])
-	a2(movdqa xmm0,[eax+0])
-	a2(movdqa xmm1,[eax+16])
-	a2(movdqa xmm2,[eax+32])
-	a2(movdqa xmm3,[eax+48])
+	a2(movdqa xmm0,[ecx+esi+0])
+	a2(movdqa xmm1,[ecx+esi+16])
+	a2(movdqa xmm2,[ecx+esi+32])
+	a2(movdqa xmm3,[ecx+esi+48])
+	a1(jz scrypt_ChunkMix_ssse3_no_xor1)
+	a2(pxor xmm0,[ecx+eax+0])
+	a2(pxor xmm1,[ecx+eax+16])
+	a2(pxor xmm2,[ecx+eax+32])
+	a2(pxor xmm3,[ecx+eax+48])
+	a1(scrypt_ChunkMix_ssse3_no_xor1:)
+	a2(xor ecx,ecx)
+	a2(xor ebx,ebx)
 	a1(scrypt_ChunkMix_ssse3_loop:)
+		a2(and eax, eax)
 		a2(pxor xmm0,[esi+ecx+0])
 		a2(pxor xmm1,[esi+ecx+16])
 		a2(pxor xmm2,[esi+ecx+32])
 		a2(pxor xmm3,[esi+ecx+48])
+		a1(jz scrypt_ChunkMix_ssse3_no_xor2)
+		a2(pxor xmm0,[eax+ecx+0])
+		a2(pxor xmm1,[eax+ecx+16])
+		a2(pxor xmm2,[eax+ecx+32])
+		a2(pxor xmm3,[eax+ecx+48])
+		a1(scrypt_ChunkMix_ssse3_no_xor2:)
 		a2(movdqa [esp+0],xmm0)
 		a2(movdqa [esp+16],xmm1)
 		a2(movdqa [esp+32],xmm2)
@@ -96,14 +110,15 @@ asm_naked_fn(scrypt_ChunkMix_ssse3)
 		a2(movdqa [eax+0],xmm0)
 		a2(movdqa [eax+16],xmm1)
 		a2(movdqa [eax+32],xmm2)
-		a2(movdqa [eax+48],xmm3)		
+		a2(movdqa [eax+48],xmm3)
+		a2(mov eax,[ebp+28])
 		a1(jne scrypt_ChunkMix_ssse3_loop)
 	a2(mov esp,ebp)
 	a1(pop ebp)
 	a1(pop esi)
 	a1(pop edi)
 	a1(pop ebx)
-	a1(ret 12)
+	a1(ret 16)
 asm_naked_fn_end(scrypt_ChunkMix_ssse3)
 
 #endif
@@ -115,25 +130,40 @@ asm_naked_fn_end(scrypt_ChunkMix_ssse3)
 
 #define SCRYPT_CHACHA_SSSE3
 
-asm_naked_fn_proto(void, scrypt_ChunkMix_ssse3)(uint32_t *Bout/*[chunkBytes]*/, uint32_t *Bin/*[chunkBytes]*/, uint32_t r)
+asm_naked_fn_proto(void, scrypt_ChunkMix_ssse3)(uint32_t *Bout/*[chunkBytes]*/, uint32_t *Bin/*[chunkBytes]*/, uint32_t *Bxor/*[chunkBytes]*/, uint32_t r)
 asm_naked_fn(scrypt_ChunkMix_ssse3)
-	a2(lea rdx,[rdx*2])
-	a2(shl rdx,6)
-	a2(lea rax,[rdx-64])
-	a2(add rax,rsi)
-	a2(xor rcx,rcx)
-	a2(xor r8,r8)
+	a2(lea rcx,[rcx*2])
+	a2(shl rcx,6)
+	a2(lea r9,[rcx-64])
+	a2(lea rax,[rsi+r9])
+	a2(lea r9,[rdx+r9])
+	a2(and rdx, rdx)
 	a2(movdqa xmm4,[ssse3_rotl16_32bit])
 	a2(movdqa xmm5,[ssse3_rotl8_32bit])
 	a2(movdqa xmm0,[rax+0])
 	a2(movdqa xmm1,[rax+16])
 	a2(movdqa xmm2,[rax+32])
 	a2(movdqa xmm3,[rax+48])
+	a1(jz scrypt_ChunkMix_ssse3_no_xor1)
+	a2(pxor xmm0,[r9+0])
+	a2(pxor xmm1,[r9+16])
+	a2(pxor xmm2,[r9+32])
+	a2(pxor xmm3,[r9+48])
+	a1(scrypt_ChunkMix_ssse3_no_xor1:)
+	a2(xor r8,r8)
+	a2(xor r9,r9)
 	a1(scrypt_ChunkMix_ssse3_loop:)
-		a2(pxor xmm0,[rsi+rcx+0])
-		a2(pxor xmm1,[rsi+rcx+16])
-		a2(pxor xmm2,[rsi+rcx+32])
-		a2(pxor xmm3,[rsi+rcx+48])
+		a2(and rdx, rdx)
+		a2(pxor xmm0,[rsi+r9+0])
+		a2(pxor xmm1,[rsi+r9+16])
+		a2(pxor xmm2,[rsi+r9+32])
+		a2(pxor xmm3,[rsi+r9+48])
+		a1(jz scrypt_ChunkMix_ssse3_no_xor2)
+		a2(pxor xmm0,[rdx+r9+0])
+		a2(pxor xmm1,[rdx+r9+16])
+		a2(pxor xmm2,[rdx+r9+32])
+		a2(pxor xmm3,[rdx+r9+48])
+		a1(scrypt_ChunkMix_ssse3_no_xor2:)
 		a2(movdqa xmm8,xmm0)
 		a2(movdqa xmm9,xmm1)
 		a2(movdqa xmm10,xmm2)
@@ -188,17 +218,17 @@ asm_naked_fn(scrypt_ChunkMix_ssse3)
 		a2(paddd xmm1,xmm9)
 		a2(paddd xmm2,xmm10)
 		a2(paddd xmm3,xmm11)
-		a2(lea rax,[r8+rcx])
-		a2(xor r8,rdx)
+		a2(lea rax,[r8+r9])
+		a2(xor r8,rcx)
 		a2(and rax,~0x7f)
-		a2(add rcx,64)
+		a2(add r9,64)
 		a2(shr rax,1)
 		a2(add rax, rdi)
-		a2(cmp rcx,rdx)
+		a2(cmp r9,rcx)
 		a2(movdqa [rax+0],xmm0)
 		a2(movdqa [rax+16],xmm1)
 		a2(movdqa [rax+32],xmm2)
-		a2(movdqa [rax+48],xmm3)		
+		a2(movdqa [rax+48],xmm3)
 		a1(jne scrypt_ChunkMix_ssse3_loop)
 	a1(ret)
 asm_naked_fn_end(scrypt_ChunkMix_ssse3)
@@ -212,7 +242,7 @@ asm_naked_fn_end(scrypt_ChunkMix_ssse3)
 #define SCRYPT_CHACHA_SSSE3
 
 static void NOINLINE
-scrypt_ChunkMix_ssse3(uint32_t *Bout/*[chunkBytes]*/, uint32_t *Bin/*[chunkBytes]*/, uint32_t r) {
+scrypt_ChunkMix_ssse3(uint32_t *Bout/*[chunkBytes]*/, uint32_t *Bin/*[chunkBytes]*/, uint32_t *Bxor/*[chunkBytes]*/, uint32_t r) {
 	uint32_t i, blocksPerChunk = r * 2, half = 0;
 	xmmi *xmmp,x0,x1,x2,x3,x6,t0,t1,t2,t3;
 	const xmmi x4 = *(xmmi *)&ssse3_rotl16_32bit, x5 = *(xmmi *)&ssse3_rotl8_32bit;
@@ -225,6 +255,14 @@ scrypt_ChunkMix_ssse3(uint32_t *Bout/*[chunkBytes]*/, uint32_t *Bin/*[chunkBytes
 	x2 = xmmp[2];
 	x3 = xmmp[3];
 
+	if (Bxor) {
+		xmmp = (xmmi *)scrypt_block(Bxor, blocksPerChunk - 1);
+		x0 = _mm_xor_si128(x0, xmmp[0]);
+		x1 = _mm_xor_si128(x1, xmmp[1]);
+		x2 = _mm_xor_si128(x2, xmmp[2]);
+		x3 = _mm_xor_si128(x3, xmmp[3]);
+	}
+
 	/* 2: for i = 0 to 2r - 1 do */
 	for (i = 0; i < blocksPerChunk; i++, half ^= r) {
 		/* 3: X = H(X ^ B_i) */
@@ -233,6 +271,14 @@ scrypt_ChunkMix_ssse3(uint32_t *Bout/*[chunkBytes]*/, uint32_t *Bin/*[chunkBytes
 		x1 = _mm_xor_si128(x1, xmmp[1]);
 		x2 = _mm_xor_si128(x2, xmmp[2]);
 		x3 = _mm_xor_si128(x3, xmmp[3]);
+
+		if (Bxor) {
+			xmmp = (xmmi *)scrypt_block(Bxor, i);
+			x0 = _mm_xor_si128(x0, xmmp[0]);
+			x1 = _mm_xor_si128(x1, xmmp[1]);
+			x2 = _mm_xor_si128(x2, xmmp[2]);
+			x3 = _mm_xor_si128(x3, xmmp[3]);
+		}
 
 		t0 = x0;
 		t1 = x1;

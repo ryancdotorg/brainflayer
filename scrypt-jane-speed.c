@@ -81,7 +81,7 @@ int main() {
 	topbit = 0;
 	for (i = cpuflags; i != 0; i >>= 1)
 		topbit++;
-	topbit = (1 << topbit);
+	topbit = ((size_t)1 << topbit);
 
 	while (1) {
 	#if defined(SCRYPT_CHOOSE_COMPILETIME)

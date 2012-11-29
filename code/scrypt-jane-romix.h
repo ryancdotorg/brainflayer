@@ -19,11 +19,12 @@ scrypt_romix_convert_endian(uint32_t *blocks, size_t nblocks) {
 #endif
 }
 
-typedef void (STDCALL *chunkmixfn)(uint32_t *Bout/*[chunkDWords]*/, uint32_t *Bin/*[chunkDWords]*/, uint32_t r);
+typedef void (STDCALL *chunkmixfn)(uint32_t *Bout/*[chunkDWords]*/, uint32_t *Bin/*[chunkDWords]*/, uint32_t *Bxor/*[chunkDWords]*/, uint32_t r);
 typedef void (STDCALL *blockfixfn)(uint32_t *blocks, size_t nblocks);
 
 static int
 scrypt_test_mix_instance(chunkmixfn mixfn, blockfixfn prefn, blockfixfn postfn, const uint8_t expected[16]) {
+	const uint32_t r = 2;
 	uint32_t MM16 chunk[2][64], v;
 	uint8_t final[16];
 	size_t i;
@@ -35,9 +36,9 @@ scrypt_test_mix_instance(chunkmixfn mixfn, blockfixfn prefn, blockfixfn postfn, 
 		chunk[0][i] = v;
 	}
 
-	prefn(chunk[0], 4);
-	mixfn(chunk[1], chunk[0], 2);
-	postfn(chunk[1], 4);
+	prefn(chunk[0], r * 2);
+	mixfn(chunk[1], chunk[0], NULL, r);
+	postfn(chunk[1], r * 2);
 
 	U32TO8_LE(final + 0, chunk[1][60]);
 	U32TO8_LE(final + 4, chunk[1][61]);
