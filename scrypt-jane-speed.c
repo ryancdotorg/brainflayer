@@ -65,7 +65,7 @@ static const scrypt_speed_settings settings[] = {
 int main() {
 	const scrypt_speed_settings *s;
 	uint8_t password[64], salt[24], digest[64];
-	uint64_t ticks;
+	uint64_t minticks, ticks;
 	size_t i, passes;
 	size_t cpuflags, topbit;
 
@@ -75,7 +75,7 @@ int main() {
 		salt[i] = 255 - (uint8_t)i;
 
 	/* warm up a little */
-	scrypt(password, sizeof(password), salt, sizeof(salt), 14, 3, 4, digest, sizeof(digest));
+	scrypt(password, sizeof(password), salt, sizeof(salt), 15, 3, 4, digest, sizeof(digest));
 
 	cpuflags = available_implementations();
 	topbit = 0;
@@ -93,21 +93,23 @@ int main() {
 		cpu_detect_mask = cpuflags;
 		for (i = 0; settings[i].desc; i++) {
 			s = &settings[i];
-			ticks = maxticks;
-			for (passes = 0; passes < 8; passes++)
-				timeit(scrypt(password, sizeof(password), salt, sizeof(salt), s->Nfactor, s->rfactor, s->pfactor, digest, sizeof(digest)), ticks)
+			minticks = maxticks;
+			for (passes = 0; passes < 16; passes++)
+				timeit(scrypt(password, sizeof(password), salt, sizeof(salt), s->Nfactor, s->rfactor, s->pfactor, digest, sizeof(digest)), minticks)
 
-			printf("%s, %.0f ticks\n", s->desc, (double)ticks);
+			printf("%s, %.0f ticks\n", s->desc, (double)minticks);
 		}
 
 	#if defined(SCRYPT_CHOOSE_COMPILETIME)
 		break;
 	#else
-		if (!cpuflags)
-			break;
 		while (topbit && ((cpuflags & topbit) == 0)) 
 			topbit >>= 1;
 		cpuflags &= ~topbit;
+
+		/* (cpuflags == 0) is the basic/portable version, don't bother timing it */
+		if (!cpuflags)
+			break;
 	#endif
 	}
 
