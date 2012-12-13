@@ -14,7 +14,7 @@
 	#define SCRYPT_ROMIX_FN scrypt_ROMix_sse2
 	#define SCRYPT_MIX_FN salsa_core_sse2
 	#define SCRYPT_ROMIX_TANGLE_FN salsa_core_tangle_sse2
-	#define SCRYPT_ROMIX_UNTANGLE_FN salsa_core_untangle_sse2
+	#define SCRYPT_ROMIX_UNTANGLE_FN salsa_core_tangle_sse2
 	#include "scrypt-jane-romix-template.h"
 #endif
 
@@ -66,7 +66,7 @@ scrypt_test_mix() {
 
 #if defined(SCRYPT_SALSA_SSE2)
 	if (cpuflags & cpu_sse2)
-		ret &= scrypt_test_mix_instance(scrypt_ChunkMix_sse2, salsa_core_tangle_sse2, salsa_core_untangle_sse2, expected);
+		ret &= scrypt_test_mix_instance(scrypt_ChunkMix_sse2, salsa_core_tangle_sse2, salsa_core_tangle_sse2, expected);
 #endif
 
 #if defined(SCRYPT_SALSA_BASIC)

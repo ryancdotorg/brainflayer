@@ -3,90 +3,6 @@
 
 #define SCRYPT_SALSA_SSE2
 
-asm_naked_fn_proto(void, salsa_core_tangle_sse2)(uint32_t *blocks, size_t count)
-asm_naked_fn(salsa_core_tangle_sse2)
-	a2(mov eax, [esp+4])
-	a2(mov edx, [esp+8])
-	a1(salsa_core_tangle_sse2_loop:)
-		a2(movdqa xmm0, [eax+0])
-		a2(movdqa xmm3, [eax+16])
-		a2(movdqa xmm2, [eax+32])
-		a2(movdqa xmm1, [eax+48])
-		a2(movdqa xmm4, xmm0)
-		a2(pcmpeqw xmm5, xmm5)
-		a2(psrlq xmm5, 32)
-		a2(pxor xmm0, xmm3)
-		a2(pand xmm0, xmm5)
-		a2(pxor xmm0, xmm3)
-		a2(pxor xmm3, xmm2)
-		a2(pand xmm3, xmm5)
-		a2(pxor xmm3, xmm2)
-		a2(pxor xmm2, xmm1)
-		a2(pand xmm2, xmm5)
-		a2(pxor xmm2, xmm1)
-		a2(pxor xmm1, xmm4)
-		a2(pand xmm1, xmm5)
-		a2(pxor xmm1, xmm4)
-		a2(movdqa xmm4, xmm0)
-		a2(movdqa xmm5, xmm3)
-		a3(pshufd xmm2, xmm2, 0x4e)
-		a3(pshufd xmm1, xmm1, 0x4e)
-		a2(punpcklqdq xmm0, xmm2)
-		a2(punpcklqdq xmm3, xmm1)
-		a2(punpckhqdq xmm2, xmm4)
-		a2(punpckhqdq xmm1, xmm5)
-		a2(movdqa [eax+0], xmm0)
-		a2(movdqa [eax+16], xmm1)
-		a2(movdqa [eax+32], xmm2)
-		a2(movdqa [eax+48], xmm3)
-		a2(add eax, 64)
-		a2(sub edx, 1)
-		a1(jnz salsa_core_tangle_sse2_loop)
-	a1(ret 8)
-asm_naked_fn_end(salsa_core_tangle_sse2)
-
-asm_naked_fn_proto(void, salsa_core_untangle_sse2)(uint32_t *blocks, size_t count)
-asm_naked_fn(salsa_core_untangle_sse2)
-	a2(mov eax, [esp+4])
-	a2(mov edx, [esp+8])
-	a1(salsa_core_untangle_sse2_loop:)
-		a2(movdqa xmm0, [eax+0])
-		a2(movdqa xmm1, [eax+16])
-		a2(movdqa xmm2, [eax+32])
-		a2(movdqa xmm3, [eax+48])
-		a2(movdqa xmm4, xmm0)
-		a2(pcmpeqw xmm5, xmm5)
-		a2(psrlq xmm5, 32)
-		a2(pxor xmm0, xmm1)
-		a2(pand xmm0, xmm5)
-		a2(pxor xmm0, xmm1)
-		a2(pxor xmm1, xmm2)
-		a2(pand xmm1, xmm5)
-		a2(pxor xmm1, xmm2)
-		a2(pxor xmm2, xmm3)
-		a2(pand xmm2, xmm5)
-		a2(pxor xmm2, xmm3)
-		a2(pxor xmm3, xmm4)
-		a2(pand xmm3, xmm5)
-		a2(pxor xmm3, xmm4)
-		a2(movdqa xmm4, xmm0)
-		a2(movdqa xmm5, xmm3)
-		a3(pshufd xmm2, xmm2, 0x4e)
-		a3(pshufd xmm1, xmm1, 0x4e)
-		a2(punpcklqdq xmm0, xmm2)
-		a2(punpcklqdq xmm3, xmm1)
-		a2(punpckhqdq xmm2, xmm4)
-		a2(punpckhqdq xmm1, xmm5)
-		a2(movdqa [eax+0], xmm0)
-		a2(movdqa [eax+16], xmm3)
-		a2(movdqa [eax+32], xmm2)
-		a2(movdqa [eax+48], xmm1)
-		a2(add eax, 64)
-		a2(sub edx, 1)
-		a1(jnz salsa_core_untangle_sse2_loop)
-	a1(ret 8)
-asm_naked_fn_end(salsa_core_tangle_sse2)
-
 asm_naked_fn_proto(void, scrypt_ChunkMix_sse2)(uint32_t *Bout/*[chunkBytes]*/, uint32_t *Bin/*[chunkBytes]*/, uint32_t *Bxor/*[chunkBytes]*/, uint32_t r)
 asm_naked_fn(scrypt_ChunkMix_sse2)
 	a1(push ebx)
@@ -232,86 +148,6 @@ asm_naked_fn_end(scrypt_ChunkMix_sse2)
 
 #define SCRYPT_SALSA_SSE2
 
-asm_naked_fn_proto(void, salsa_core_tangle_sse2)(uint32_t *blocks, size_t count)
-asm_naked_fn(salsa_core_tangle_sse2)
-	a1(salsa_core_tangle_sse2_loop:)
-		a2(movdqa xmm0, [rdi+0])
-		a2(movdqa xmm3, [rdi+16])
-		a2(movdqa xmm2, [rdi+32])
-		a2(movdqa xmm1, [rdi+48])
-		a2(movdqa xmm4, xmm0)
-		a2(pcmpeqw xmm5, xmm5)
-		a2(psrlq xmm5, 32)
-		a2(pxor xmm0, xmm3)
-		a2(pand xmm0, xmm5)
-		a2(pxor xmm0, xmm3)
-		a2(pxor xmm3, xmm2)
-		a2(pand xmm3, xmm5)
-		a2(pxor xmm3, xmm2)
-		a2(pxor xmm2, xmm1)
-		a2(pand xmm2, xmm5)
-		a2(pxor xmm2, xmm1)
-		a2(pxor xmm1, xmm4)
-		a2(pand xmm1, xmm5)
-		a2(pxor xmm1, xmm4)
-		a2(movdqa xmm4, xmm0)
-		a2(movdqa xmm5, xmm3)
-		a3(pshufd xmm2, xmm2, 0x4e)
-		a3(pshufd xmm1, xmm1, 0x4e)
-		a2(punpcklqdq xmm0, xmm2)
-		a2(punpcklqdq xmm3, xmm1)
-		a2(punpckhqdq xmm2, xmm4)
-		a2(punpckhqdq xmm1, xmm5)
-		a2(movdqa [rdi+0], xmm0)
-		a2(movdqa [rdi+16], xmm1)
-		a2(movdqa [rdi+32], xmm2)
-		a2(movdqa [rdi+48], xmm3)
-		a2(add rdi, 64)
-		a2(sub rsi, 1)
-		a1(jnz salsa_core_tangle_sse2_loop)
-	a1(ret)
-asm_naked_fn_end(salsa_core_tangle_sse2)
-
-asm_naked_fn_proto(void, salsa_core_untangle_sse2)(uint32_t *blocks, size_t count)
-asm_naked_fn(salsa_core_untangle_sse2)
-	a1(salsa_core_untangle_sse2_loop:)
-		a2(movdqa xmm0, [rdi+0])
-		a2(movdqa xmm1, [rdi+16])
-		a2(movdqa xmm2, [rdi+32])
-		a2(movdqa xmm3, [rdi+48])
-		a2(movdqa xmm4, xmm0)
-		a2(pcmpeqw xmm5, xmm5)
-		a2(psrlq xmm5, 32)
-		a2(pxor xmm0, xmm1)
-		a2(pand xmm0, xmm5)
-		a2(pxor xmm0, xmm1)
-		a2(pxor xmm1, xmm2)
-		a2(pand xmm1, xmm5)
-		a2(pxor xmm1, xmm2)
-		a2(pxor xmm2, xmm3)
-		a2(pand xmm2, xmm5)
-		a2(pxor xmm2, xmm3)
-		a2(pxor xmm3, xmm4)
-		a2(pand xmm3, xmm5)
-		a2(pxor xmm3, xmm4)
-		a2(movdqa xmm4, xmm0)
-		a2(movdqa xmm5, xmm3)
-		a3(pshufd xmm2, xmm2, 0x4e)
-		a3(pshufd xmm1, xmm1, 0x4e)
-		a2(punpcklqdq xmm0, xmm2)
-		a2(punpcklqdq xmm3, xmm1)
-		a2(punpckhqdq xmm2, xmm4)
-		a2(punpckhqdq xmm1, xmm5)
-		a2(movdqa [rdi+0], xmm0)
-		a2(movdqa [rdi+16], xmm3)
-		a2(movdqa [rdi+32], xmm2)
-		a2(movdqa [rdi+48], xmm1)
-		a2(add rdi, 64)
-		a2(sub rsi, 1)
-		a1(jnz salsa_core_untangle_sse2_loop)
-	a1(ret)
-asm_naked_fn_end(salsa_core_tangle_sse2)
-
 asm_naked_fn_proto(void, scrypt_ChunkMix_sse2)(uint32_t *Bout/*[chunkBytes]*/, uint32_t *Bin/*[chunkBytes]*/, uint32_t *Bxor/*[chunkBytes]*/, uint32_t r)
 asm_naked_fn(scrypt_ChunkMix_sse2)
 	a2(lea rcx,[rcx*2])
@@ -441,111 +277,6 @@ asm_naked_fn_end(scrypt_ChunkMix_sse2)
 
 #define SCRYPT_SALSA_SSE2
 
-/*
-	Default layout:
-	 0  1  2  3
-	 4  5  6  7
-	 8  9 10 11
-	12 13 14 15
-
-	SSE2 layout:
-	 0  5 10 15
-	12  1  6 11
-	 8 13  2  7
-	 4  9 14  3
-*/
-
-static void NOINLINE
-salsa_core_tangle_sse2(uint32_t *blocks, size_t count) {
-	xmmi *st = (xmmi *)blocks;
-	xmmi x0,x1,x2,x3;
-	xmmi t0,t1;
-
-	while (count--) {
-		x0 = st[0];
-		x3 = st[1];
-		x2 = st[2];
-		x1 = st[3];
-
-		t0 = x0;
-		t1 = _mm_srli_epi64(_mm_cmpeq_epi32(t0, t0), 32);
-
-		x0 = _mm_xor_si128(x0, x3);
-		x0 = _mm_and_si128(x0, t1);
-		x0 = _mm_xor_si128(x0, x3);
-		x3 = _mm_xor_si128(x3, x2);
-		x3 = _mm_and_si128(x3, t1);
-		x3 = _mm_xor_si128(x3, x2);
-		x2 = _mm_xor_si128(x2, x1);
-		x2 = _mm_and_si128(x2, t1);
-		x2 = _mm_xor_si128(x2, x1);
-		x1 = _mm_xor_si128(x1, t0);
-		x1 = _mm_and_si128(x1, t1);
-		x1 = _mm_xor_si128(x1, t0);
-
-		t0 = x0;
-		t1 = x3;
-		x2 = _mm_shuffle_epi32(x2, 0x4e);
-		x1 = _mm_shuffle_epi32(x1, 0x4e);
-		x0 = _mm_unpacklo_epi64(x0, x2);
-		x3 = _mm_unpacklo_epi64(x3, x1);
-		x2 = _mm_unpackhi_epi64(x2, t0);
-		x1 = _mm_unpackhi_epi64(x1, t1);
-
-		st[0] = x0;
-		st[1] = x1;
-		st[2] = x2;
-		st[3] = x3;
-
-		st += 4;
-	}
-}
-
-static void NOINLINE
-salsa_core_untangle_sse2(uint32_t *blocks, size_t count) {
-	xmmi *st = (xmmi *)blocks;
-	xmmi x0,x1,x2,x3;
-	xmmi t0,t1;
-
-	while (count--) {
-		x0 = st[0];
-		x1 = st[1];
-		x2 = st[2];
-		x3 = st[3];
-
-		t0 = x0;
-		t1 = _mm_srli_epi64(_mm_cmpeq_epi32(t0, t0), 32);
-
-		x0 = _mm_xor_si128(x0, x1);
-		x0 = _mm_and_si128(x0, t1);
-		x0 = _mm_xor_si128(x0, x1);
-		x1 = _mm_xor_si128(x1, x2);
-		x1 = _mm_and_si128(x1, t1);
-		x1 = _mm_xor_si128(x1, x2);
-		x2 = _mm_xor_si128(x2, x3);
-		x2 = _mm_and_si128(x2, t1);
-		x2 = _mm_xor_si128(x2, x3);
-		x3 = _mm_xor_si128(x3, t0);
-		x3 = _mm_and_si128(x3, t1);
-		x3 = _mm_xor_si128(x3, t0);
-
-		t0 = x0;
-		t1 = x3;
-		x2 = _mm_shuffle_epi32(x2, 0x4e);
-		x1 = _mm_shuffle_epi32(x1, 0x4e);
-		x0 = _mm_unpacklo_epi64(x0, x2);
-		x3 = _mm_unpacklo_epi64(x3, x1);
-		x2 = _mm_unpackhi_epi64(x2, t0);
-		x1 = _mm_unpackhi_epi64(x1, t1);
-
-		st[0] = x0;
-		st[1] = x3;
-		st[2] = x2;
-		st[3] = x1;
-		st += 4;
-	}
-}
-
 static void NOINLINE
 scrypt_ChunkMix_sse2(uint32_t *Bout/*[chunkBytes]*/, uint32_t *Bin/*[chunkBytes]*/, uint32_t *Bxor/*[chunkBytes]*/, uint32_t r) {
 	uint32_t i, blocksPerChunk = r * 2, half = 0;
@@ -673,6 +404,34 @@ scrypt_ChunkMix_sse2(uint32_t *Bout/*[chunkBytes]*/, uint32_t *Bin/*[chunkBytes]
 #endif
 
 #if defined(SCRYPT_SALSA_SSE2)
+	/*
+		Default layout:
+		 0  1  2  3
+		 4  5  6  7
+		 8  9 10 11
+		12 13 14 15
+
+		SSE2 layout:
+		 0  5 10 15
+		12  1  6 11
+		 8 13  2  7
+		 4  9 14  3
+	*/
+
+	static void STDCALL
+	salsa_core_tangle_sse2(uint32_t *blocks, size_t count) {
+		uint32_t t;
+		while (count--) {
+			t = blocks[1]; blocks[1] = blocks[5]; blocks[5] = t;
+			t = blocks[2]; blocks[2] = blocks[10]; blocks[10] = t;
+			t = blocks[3]; blocks[3] = blocks[15]; blocks[15] = t;
+			t = blocks[4]; blocks[4] = blocks[12]; blocks[12] = t;
+			t = blocks[7]; blocks[7] = blocks[11]; blocks[11] = t;
+			t = blocks[9]; blocks[9] = blocks[13]; blocks[13] = t;
+			blocks += 16;
+		}
+	}
+
 	#undef SCRYPT_MIX
 	#define SCRYPT_MIX "Salsa/8-SSE2"
 	#undef SCRYPT_SALSA_INCLUDED
