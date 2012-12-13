@@ -233,6 +233,12 @@
     (v) = ((v) << 16) | ((v) >> 16);                              \
 }
 
+#define U64_SWAP(v) {                                                                       \
+	(v) = (((v) <<  8) & 0xFF00FF00FF00FF00ull ) | (((v) >>  8) & 0x00FF00FF00FF00FFull );  \
+	(v) = (((v) << 16) & 0xFFFF0000FFFF0000ull ) | (((v) >> 16) & 0x0000FFFF0000FFFFull );  \
+    (v) = ((v) << 32) | ((v) >> 32);                                                        \
+}
+
 static int
 scrypt_verify(const uint8_t *x, const uint8_t *y, size_t len) {
 	uint32_t differentbits = 0;

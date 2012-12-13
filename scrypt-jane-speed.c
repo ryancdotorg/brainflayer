@@ -55,10 +55,11 @@ typedef struct scrypt_speed_settings_t {
 	uint8_t Nfactor, rfactor, pfactor;
 } scrypt_speed_settings;
 
+/* scrypt_r_32kb is set to a 32kb chunk, so (1 << (scrypt_r_32kb - 5)) = 1kb chunk */
 static const scrypt_speed_settings settings[] = {
-	{"scrypt high volume     ( ~4mb)", 11, 3, 0},
-	{"scrypt interactive     (~16mb)", 13, 3, 0},
-	{"scrypt non-interactive (~ 1gb)", 19, 3, 0},
+	{"scrypt high volume     ( ~4mb)", 11, scrypt_r_32kb - 5, 0},
+	{"scrypt interactive     (~16mb)", 13, scrypt_r_32kb - 5, 0},
+	{"scrypt non-interactive (~ 1gb)", 19, scrypt_r_32kb - 5, 0},
 	{0}
 };
 

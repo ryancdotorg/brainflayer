@@ -12,9 +12,19 @@
 #include "code/scrypt-jane-romix.h"
 #include "code/scrypt-jane-test-vectors.h"
 
+
 #define scrypt_maxN 30  /* (1 << (30 + 1)) = ~2 billion */
-#define scrypt_maxr 8   /* (1 <<        8) = 256 * 2 blocks in a chunk * 64 bytes = Max of 32kb in a chunk */
-#define scrypt_maxp 25  /* (1 <<       25) = ~33 million */
+#if (SCRYPT_BLOCK_BYTES == 64)
+#define scrypt_r_32kb 8 /* (1 << 8) = 256 * 2 blocks in a chunk * 64 bytes = Max of 32kb in a chunk */
+#elif (SCRYPT_BLOCK_BYTES == 128)
+#define scrypt_r_32kb 7 /* (1 << 7) = 128 * 2 blocks in a chunk * 128 bytes = Max of 32kb in a chunk */
+#elif (SCRYPT_BLOCK_BYTES == 256)
+#define scrypt_r_32kb 6 /* (1 << 6) = 64 * 2 blocks in a chunk * 256 bytes = Max of 32kb in a chunk */
+#elif (SCRYPT_BLOCK_BYTES == 512)
+#define scrypt_r_32kb 5 /* (1 << 5) = 32 * 2 blocks in a chunk * 512 bytes = Max of 32kb in a chunk */
+#endif
+#define scrypt_maxr scrypt_r_32kb /* 32kb */
+#define scrypt_maxp 25  /* (1 << 25) = ~33 million */
 
 #include <stdio.h>
 #include <malloc.h>
@@ -82,10 +92,10 @@ static scrypt_aligned_alloc
 scrypt_alloc(uint64_t size) {
 	scrypt_aligned_alloc aa;
 	if (!mem_base) {
-		mem_base = (uint8_t *)malloc((1024 * 1024 * 1024) + (1024 * 1024) + 63);
+		mem_base = (uint8_t *)malloc((1024 * 1024 * 1024) + (1024 * 1024) + (SCRYPT_BLOCK_BYTES - 1));
 		if (!mem_base)
 			scrypt_fatal_error("scrypt: out of memory");
-		mem_base = (uint8_t *)(((size_t)mem_base + 63) & ~63);
+		mem_base = (uint8_t *)(((size_t)mem_base + (SCRYPT_BLOCK_BYTES - 1)) & ~(SCRYPT_BLOCK_BYTES - 1));
 	}
 	aa.mem = mem_base + mem_bump;
 	aa.ptr = aa.mem;
@@ -102,11 +112,11 @@ static scrypt_aligned_alloc
 scrypt_alloc(uint64_t size) {
 	static const size_t max_alloc = (size_t)-1;
 	scrypt_aligned_alloc aa;
-	size += 63;
+	size += (SCRYPT_BLOCK_BYTES - 1);
 	if (size > max_alloc)
 		scrypt_fatal_error("scrypt: not enough address space on this CPU to allocate required memory");
 	aa.mem = (uint8_t *)malloc((size_t)size);
-	aa.ptr = (uint8_t *)(((size_t)aa.mem + 63) & ~63);
+	aa.ptr = (uint8_t *)(((size_t)aa.mem + (SCRYPT_BLOCK_BYTES - 1)) & ~(SCRYPT_BLOCK_BYTES - 1));
 	if (!aa.mem)
 		scrypt_fatal_error("scrypt: out of memory");
 	return aa;
@@ -160,7 +170,7 @@ scrypt(const uint8_t *password, size_t password_len, const uint8_t *salt, size_t
 
 	/* 2: X = ROMix(X) */
 	for (i = 0; i < p; i++)
-		scrypt_ROMix((uint32_t *)(X + (chunk_bytes * i)), (uint32_t *)Y, (uint32_t *)V.ptr, N, r);
+		scrypt_ROMix((scrypt_mix_word_t *)(X + (chunk_bytes * i)), (scrypt_mix_word_t *)Y, (scrypt_mix_word_t *)V.ptr, N, r);
 
 	/* 3: Out = PBKDF2(password, X) */
 	scrypt_pbkdf2(password, password_len, X, chunk_bytes * p, 1, out, bytes);
