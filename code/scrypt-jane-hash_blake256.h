@@ -75,6 +75,8 @@ blake256_blocks(scrypt_hash_state *S, const uint8_t *in, size_t blocks) {
 				sigma = blake256_sigma;
 		}
 
+		#undef G
+
 		for (i = 0; i < 8; i++) h[i] ^= (v[i] ^ v[i + 8]);
 	}
 
