@@ -10,10 +10,11 @@ The code uses a modular (compile, not runtime) layout to allow new mixing & hash
 
 * [Salsa20/8](http://cr.yp.to/salsa20.html)
 * [ChaCha20/8](http://cr.yp.to/chacha.html)
+* [Salsa6420/8]()
 
 I am not actually aware of any other candidates for a decent mix function. Salsa20/8 was nearly perfect, but its successor, ChaCha20/8, has better diffusion and is thus stronger, is potentially faster given advanced SIMD support (byte level shuffles, or a 32bit rotate), and is slightly cleaner to implement given that it requires no pre/post processing of data for SIMD implementations. 
 
-While everything is mostly generic, there are a few places that are hardcoded to assume a 64-byte block size so these would need to be modularized-ish if a mixing function with a different block size is added.
+64-byte blocks are no longer assumed! Salsa6420/8 is a 'proof of concept' 64-bit version of Salsa20/8 with a 128 byte block, and rotation constants chosen to allow 32-bit word shuffles instead of rotations for two of the rotations which put it on par with ChaCha in terms of SSE implementation shortcuts.
 
 ## Supported Hash Functions
 
@@ -56,8 +57,10 @@ Cycle counts are in millions of cycles. All versions compiled with gcc 4.6.3, -O
 <table>
 <thead><tr><th>Implemenation</th><th>Algo</th><th>High Volume</th><th>Interactive</th><th>Non-Interactive</th></tr></thead>
 <tbody>
+<tr><td>scrypt-jane SSSE3 64bit</td><td>Salsa6420/8 </td><td>18.2m</td><td> 75.6m</td><td>5120.0m</td></tr>
 <tr><td>scrypt-jane SSSE3 64bit</td><td>ChaCha20/8</td><td>19.6m</td><td> 79.6m</td><td>5296.7m</td></tr>
 <tr><td>scrypt-jane SSSE3 32bit</td><td>ChaCha20/8</td><td>19.8m</td><td> 80.3m</td><td>5346.1m</td></tr>
+<tr><td>scrypt-jane SSE2 64bit </td><td>Salsa6420/8 </td><td>19.8m</td><td> 82.1m</td><td>5529.2m</td></tr>
 <tr><td>scrypt-jane SSE2 64bit </td><td>Salsa20/8 </td><td>22.1m</td><td> 89.7m</td><td>5938.8m</td></tr>
 <tr><td>scrypt-jane SSE2 32bit </td><td>Salsa20/8 </td><td>22.3m</td><td> 90.6m</td><td>6011.0m</td></tr>
 <tr><td>scrypt-jane SSE2 64bit </td><td>ChaCha20/8</td><td>23.9m</td><td> 96.8m</td><td>6399.7m</td></tr>
@@ -67,6 +70,7 @@ Cycle counts are in millions of cycles. All versions compiled with gcc 4.6.3, -O
 </tbody>
 </table>
 
+* scrypt-jane Salsa6420/8-SSSE3 is ~1.80x faster than reference Salsa20/8-SSE2 for High Volume, but drops to 1.73x faster for 'Non-Interactive' instead of remaining constant
 * scrypt-jane ChaCha20/8-SSSE3 is ~1.67x faster than reference Salsa20/8-SSE2 
 * scrypt-jane Salsa20/8-SSE2 is ~1.48x faster than reference Salsa20/8-SSE2 
 * I decided to leave out the non-SIMD implemenations as nobody will be relying on them for performance
@@ -78,6 +82,7 @@ Cycle counts are in millions of cycles. All versions compiled with gcc 4.6.3, -O
 where SCRYPT_MIX is one of
 
 * SCRYPT_SALSA
+* SCRYPT_SALSA64 (no optimized 32-bit implementation)
 * SCRYPT_CHACHA
 
 and SCRYPT_HASH is one of

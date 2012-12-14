@@ -15,6 +15,7 @@ test() {
 testhash() {
 	test $1 SALSA $2
 	test $1 CHACHA $2
+	test $1 SALSA64 $2
 }
 
 testhashes() {
