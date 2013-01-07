@@ -8,6 +8,9 @@
 	#if ((defined(COMPILER_MSVC) && (COMPILER_MSVC >= 1400)) || (defined(COMPILER_GCC) && (COMPILER_GCC >= 40102)))
 		#define X86ASM_SSSE3
 	#endif
+	#if ((defined(COMPILER_GCC) && (COMPILER_GCC >= 40400)))
+		#define X86ASM_AVX
+	#endif
 #endif
 
 #if defined(CPU_X86_64) && defined(COMPILER_GCC)
@@ -15,6 +18,9 @@
 	#define X86_64ASM_SSE2
 	#if (COMPILER_GCC >= 40102)
 		#define X86_64ASM_SSSE3
+	#endif
+	#if (COMPILER_GCC >= 40400)
+		#define X86_64ASM_AVX
 	#endif
 #endif
 
@@ -29,6 +35,10 @@
 	#if (COMPILER_MSVC >= 1400)
 		#define X86_INTRINSIC_SSSE3
 	#endif
+#endif
+
+#if defined(COMPILER_MSVC) && defined(CPU_X86_64)
+	#define X86_64USE_INTRINSIC
 #endif
 
 #if defined(COMPILER_MSVC) && defined(CPU_X86_64)
@@ -51,22 +61,12 @@
 #if defined(COMPILER_GCC)
 	#if defined(__SSE__)
 		#define SYSTEM_SSE
-		#if defined(SCRYPT_CHOOSE_COMPILETIME)
-			#define X86_INTRINSIC
-			#define X86_INTRINSIC_SSE
-		#endif
 	#endif
 	#if defined(__SSE2__)
 		#define SYSTEM_SSE2
-		#if defined(SCRYPT_CHOOSE_COMPILETIME)
-			#define X86_INTRINSIC_SSE2
-		#endif
 	#endif
 	#if defined(__SSSE3__)
 		#define SYSTEM_SSSE3
-		#if defined(SCRYPT_CHOOSE_COMPILETIME)
-			#define X86_INTRINSIC_SSSE3
-		#endif
 	#endif
 #endif
 
@@ -82,13 +82,16 @@
 		typedef __m128d xmmd;
 	#endif
 	#if defined(X86_INTRINSIC_SSE2)
+		#define X86_INTRINSIC_SSE2
 		#include <emmintrin.h>
 		typedef __m128i xmmi;
 	#endif
 	#if defined(X86_INTRINSIC_SSSE3)
+		#define X86_INTRINSIC_SSSE3
 		#include <tmmintrin.h>
 	#endif
 #endif
+
 
 #if defined(X86_INTRINSIC_SSE2)
 	typedef union packedelem8_t {
@@ -148,6 +151,7 @@
 	#define a1(x) __asm {x}
 	#define a2(x, y) __asm {x, y}
 	#define a3(x, y, z) __asm {x, y, z}
+	#define a4(x, y, z, w) __asm {x, y, z, w}
 	#define al(x) __asm {label##x:}
 	#define aj(x, y, z) __asm {x label##y}
 	#define asm_align8 a1(ALIGN 8)
@@ -160,12 +164,14 @@
 	#define GNU_AS1(x) #x ";\n"
 	#define GNU_AS2(x, y) #x ", " #y ";\n"
 	#define GNU_AS3(x, y, z) #x ", " #y ", " #z ";\n"
+	#define GNU_AS4(x, y, z, w) #x ", " #y ", " #z ", " #w ";\n"
 	#define GNU_ASL(x) "\n" #x ":\n"
 	#define GNU_ASJ(x, y, z) #x " " #y #z ";"
 
 	#define a1(x) GNU_AS1(x)
 	#define a2(x, y) GNU_AS2(x, y)
 	#define a3(x, y, z) GNU_AS3(x, y, z)
+	#define a4(x, y, z, w) GNU_AS4(x, y, z, w)
 	#define al(x) GNU_ASL(x)
 	#define aj(x, y, z) GNU_ASJ(x, y, z)
 	#define asm_align8 a1(.align 8)
@@ -194,7 +200,8 @@ typedef enum cpu_flags_x86_t {
 	cpu_sse3 = 1 << 3,
 	cpu_ssse3 = 1 << 4,
 	cpu_sse4_1 = 1 << 5,
-	cpu_sse4_2 = 1 << 6
+	cpu_sse4_2 = 1 << 6,
+	cpu_avx = 1 << 7
 } cpu_flags_x86;
 
 typedef enum cpu_vendors_x86_t {
@@ -252,6 +259,22 @@ get_cpuid(x86_regs *regs, uint32_t flags) {
 #endif
 }
 
+#if defined(X86ASM_AVX) || defined(X86_64ASM_AVX)
+static uint64_t NOINLINE
+get_xgetbv(uint32_t flags) {
+#if defined(COMPILER_MSVC)
+	return _xgetbv(flags);
+#else
+	uint32_t lo, hi;
+	asm_gcc()
+		a1(xgetbv)
+		asm_gcc_parms() : "+c"(flags), "=a" (lo), "=d" (hi)
+	asm_gcc_end()
+	return ((uint64_t)lo | ((uint64_t)hi << 32));
+#endif
+}
+#endif // AVX support
+
 #if defined(SCRYPT_TEST_SPEED)
 size_t cpu_detect_mask = (size_t)-1;
 #endif
@@ -263,6 +286,9 @@ detect_cpu(void) {
 	x86_regs regs;
 	uint32_t max_level;
 	size_t cpu_flags = 0;
+#if defined(X86ASM_AVX) || defined(X86_64ASM_AVX)
+	uint64_t xgetbv_flags;
+#endif
 
 #if defined(CPU_X86)
 	if (!has_cpuid())
@@ -290,6 +316,13 @@ detect_cpu(void) {
 		return cpu_flags;
 
 	get_cpuid(&regs, 1);
+#if defined(X86ASM_AVX) || defined(X86_64ASM_AVX)
+	/* xsave/xrestore */
+	if (regs.ecx & (1 << 27)) {
+		xgetbv_flags = get_xgetbv(0);
+		if ((regs.ecx & (1 << 28)) && (xgetbv_flags & 0x6)) cpu_flags |= cpu_avx;
+	}
+#endif
 	if (regs.ecx & (1 << 20)) cpu_flags |= cpu_sse4_2;
 	if (regs.ecx & (1 << 19)) cpu_flags |= cpu_sse4_2;
 	if (regs.ecx & (1 <<  9)) cpu_flags |= cpu_ssse3;
@@ -308,7 +341,8 @@ detect_cpu(void) {
 #if defined(SCRYPT_TEST_SPEED)
 static const char *
 get_top_cpuflag_desc(size_t flag) {
-	if (flag & cpu_sse4_2) return "SSE4.2";
+	if (flag & cpu_avx) return "AVX";
+	else if (flag & cpu_sse4_2) return "SSE4.2";
 	else if (flag & cpu_sse4_1) return "SSE4.1";
 	else if (flag & cpu_ssse3) return "SSSE3";
 	else if (flag & cpu_sse2) return "SSE2";

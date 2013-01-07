@@ -11,9 +11,18 @@ typedef uint64_t scrypt_mix_word_t;
 /* must have these here in case block bytes is ever != 64 */
 #include "scrypt-jane-romix-basic.h"
 
+#include "scrypt-jane-mix_salsa64-avx.h"
 #include "scrypt-jane-mix_salsa64-ssse3.h"
 #include "scrypt-jane-mix_salsa64-sse2.h"
 #include "scrypt-jane-mix_salsa64.h"
+
+#if defined(SCRYPT_SALSA64_AVX)
+	#define SCRYPT_CHUNKMIX_FN scrypt_ChunkMix_avx
+	#define SCRYPT_ROMIX_FN scrypt_ROMix_avx
+	#define SCRYPT_ROMIX_TANGLE_FN salsa64_core_tangle_sse2
+	#define SCRYPT_ROMIX_UNTANGLE_FN salsa64_core_tangle_sse2
+	#include "scrypt-jane-romix-template.h"
+#endif
 
 #if defined(SCRYPT_SALSA64_SSSE3)
 	#define SCRYPT_CHUNKMIX_FN scrypt_ChunkMix_ssse3
@@ -43,6 +52,12 @@ static scrypt_ROMixfn
 scrypt_getROMix() {
 	size_t cpuflags = detect_cpu();
 
+#if defined(SCRYPT_SALSA64_AVX)
+	if (cpuflags & cpu_avx)
+		return scrypt_ROMix_avx;
+	else
+#endif
+
 #if defined(SCRYPT_SALSA64_SSSE3)
 	if (cpuflags & cpu_ssse3)
 		return scrypt_ROMix_ssse3;
@@ -65,6 +80,10 @@ static size_t
 available_implementations() {
 	size_t flags = 0;
 
+#if defined(SCRYPT_SALSA64_AVX)
+	flags |= cpu_avx;
+#endif
+
 #if defined(SCRYPT_SALSA64_SSSE3)
 	flags |= cpu_ssse3;
 #endif
@@ -85,6 +104,11 @@ scrypt_test_mix() {
 
 	int ret = 1;
 	size_t cpuflags = detect_cpu();
+
+#if defined(SCRYPT_SALSA64_AVX)
+	if (cpuflags & cpu_avx)
+		ret &= scrypt_test_mix_instance(scrypt_ChunkMix_avx, salsa64_core_tangle_sse2, salsa64_core_tangle_sse2, expected);
+#endif
 
 #if defined(SCRYPT_SALSA64_SSSE3)
 	if (cpuflags & cpu_ssse3)

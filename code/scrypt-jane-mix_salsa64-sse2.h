@@ -1,5 +1,5 @@
 /* x64 */
-#if defined(X86_64ASM_SSE2) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || (!defined(SCRYPT_SALSA64_INCLUDED) && defined(SYSTEM_SSE2)))
+#if defined(X86_64ASM_SSE2) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_SALSA64_INCLUDED))
 
 #define SCRYPT_SALSA64_SSE2
 
@@ -410,6 +410,14 @@ scrypt_ChunkMix_sse2(uint64_t *Bout/*[chunkBytes]*/, uint64_t *Bin/*[chunkBytes]
 #endif
 
 #if defined(SCRYPT_SALSA64_SSE2)
+	#undef SCRYPT_MIX
+	#define SCRYPT_MIX "Salsa64/8-SSE2"
+	#undef SCRYPT_SALSA64_INCLUDED
+	#define SCRYPT_SALSA64_INCLUDED
+#endif
+
+/* sse3/avx use this as well */
+#if defined(SCRYPT_SALSA64_INCLUDED)
 	/*
 		Default layout:
 		 0  1  2  3
@@ -438,9 +446,4 @@ scrypt_ChunkMix_sse2(uint64_t *Bout/*[chunkBytes]*/, uint64_t *Bin/*[chunkBytes]
 			blocks += 16;
 		}
 	}
-
-	#undef SCRYPT_MIX
-	#define SCRYPT_MIX "Salsa64/8-SSE2"
-	#undef SCRYPT_SALSA64_INCLUDED
-	#define SCRYPT_SALSA64_INCLUDED
 #endif
