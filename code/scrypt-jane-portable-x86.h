@@ -272,8 +272,8 @@ detect_cpu(void) {
 	get_cpuid(&regs, 0);
 	max_level = regs.eax;
 	vendor_string.i[0] = regs.ebx;
-	vendor_string.i[1] = regs.ecx;
-	vendor_string.i[2] = regs.edx;
+	vendor_string.i[1] = regs.edx;
+	vendor_string.i[2] = regs.ecx;
 
 	if (scrypt_verify(vendor_string.s, (const uint8_t *)"GenuineIntel", 12))
 		vendor = cpu_intel;
