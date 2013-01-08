@@ -53,27 +53,61 @@ Three different scrypt settings are tested (the last two are from the scrypt pap
 
 Cycle counts are in millions of cycles. All versions compiled with gcc 4.6.3, -O3. Sorted from fastest to slowest.
 
+Scaling refers to how much more expensive 'High Volume' is to compute than 'Interactive', normalized to "ideal" scaling (256x difficulty). <100% means it becomes easier to process as N grows, >100% means it becomes more difficult to process as N grows.
+
 
 <table>
-<thead><tr><th>Implemenation</th><th>Algo</th><th>High Volume</th><th>Interactive</th><th>Non-Interactive</th></tr></thead>
+<thead><tr><th>Implemenation</th><th>Algo</th><th>High Volume</th><th>Interactive</th><th>Non-Interactive</th><th>Scaling</th></tr></thead>
 <tbody>
-<tr><td>scrypt-jane SSSE3 64bit</td><td>Salsa6420/8 </td><td>18.2m</td><td> 75.6m</td><td>5120.0m</td></tr>
-<tr><td>scrypt-jane SSSE3 64bit</td><td>ChaCha20/8</td><td>19.6m</td><td> 79.6m</td><td>5296.7m</td></tr>
-<tr><td>scrypt-jane SSSE3 32bit</td><td>ChaCha20/8</td><td>19.8m</td><td> 80.3m</td><td>5346.1m</td></tr>
-<tr><td>scrypt-jane SSE2 64bit </td><td>Salsa6420/8 </td><td>19.8m</td><td> 82.1m</td><td>5529.2m</td></tr>
-<tr><td>scrypt-jane SSE2 64bit </td><td>Salsa20/8 </td><td>22.1m</td><td> 89.7m</td><td>5938.8m</td></tr>
-<tr><td>scrypt-jane SSE2 32bit </td><td>Salsa20/8 </td><td>22.3m</td><td> 90.6m</td><td>6011.0m</td></tr>
-<tr><td>scrypt-jane SSE2 64bit </td><td>ChaCha20/8</td><td>23.9m</td><td> 96.8m</td><td>6399.7m</td></tr>
-<tr><td>scrypt-jane SSE2 32bit </td><td>ChaCha20/8</td><td>24.2m</td><td> 98.3m</td><td>6500.7m</td></tr>
-<tr><td>*Reference SSE2 64bit* </td><td>Salsa20/8 </td><td>32.9m</td><td>135.2m</td><td>8881.6m</td></tr>
-<tr><td>*Reference SSE2 32bit* </td><td>Salsa20/8 </td><td>33.0m</td><td>134.4m</td><td>8885.2m</td></tr>
+
+<tr><td>scrypt-jane SSSE3 64bit</td><td>Salsa6420/8 </td><td>18.2m</td><td> 75.6m</td><td>5120.0m</td><td>110.0%</td></tr>
+<tr><td>scrypt-jane SSSE3 64bit</td><td>ChaCha20/8  </td><td>19.6m</td><td> 79.6m</td><td>5296.7m</td><td>105.6%</td></tr>
+<tr><td>scrypt-jane SSSE3 32bit</td><td>ChaCha20/8  </td><td>19.8m</td><td> 80.3m</td><td>5346.1m</td><td>105.5%</td></tr>
+<tr><td>scrypt-jane SSE2 64bit </td><td>Salsa6420/8 </td><td>19.8m</td><td> 82.1m</td><td>5529.2m</td><td>109.1%</td></tr>
+<tr><td>scrypt-jane SSE2 64bit </td><td>Salsa20/8   </td><td>22.1m</td><td> 89.7m</td><td>5938.8m</td><td>105.0%</td></tr>
+<tr><td>scrypt-jane SSE2 32bit </td><td>Salsa20/8   </td><td>22.3m</td><td> 90.6m</td><td>6011.0m</td><td>105.3%</td></tr>
+<tr><td>scrypt-jane SSE2 64bit </td><td>ChaCha20/8  </td><td>23.9m</td><td> 96.8m</td><td>6399.7m</td><td>104.6%</td></tr>
+<tr><td>scrypt-jane SSE2 32bit </td><td>ChaCha20/8  </td><td>24.2m</td><td> 98.3m</td><td>6500.7m</td><td>104.9%</td></tr>
+<tr><td>*Reference SSE2 64bit* </td><td>Salsa20/8   </td><td>32.9m</td><td>135.2m</td><td>8881.6m</td><td>105.5%</td></tr>
+<tr><td>*Reference SSE2 32bit* </td><td>Salsa20/8   </td><td>33.0m</td><td>134.4m</td><td>8885.2m</td><td>105.2%</td></tr>
 </tbody>
 </table>
 
 * scrypt-jane Salsa6420/8-SSSE3 is ~1.80x faster than reference Salsa20/8-SSE2 for High Volume, but drops to 1.73x faster for 'Non-Interactive' instead of remaining constant
 * scrypt-jane ChaCha20/8-SSSE3 is ~1.67x faster than reference Salsa20/8-SSE2 
 * scrypt-jane Salsa20/8-SSE2 is ~1.48x faster than reference Salsa20/8-SSE2 
-* I decided to leave out the non-SIMD implemenations as nobody will be relying on them for performance
+
+# Performance (on a slightly noisy E3-1270 3.4GHZ)
+
+All versions compiled with gcc 4.4.7, -O3. Sorted from fastest to slowest.
+
+<table>
+<thead><tr><th>Implemenation</th><th>Algo</th><th>High Volume</th><th>Interactive</th><th>Non-Interactive</th><th>Scaling</th></tr></thead>
+<tbody>
+<tr><td>scrypt-jane AVX 64bit      </td><td>Salsa6420/8 </td><td>11.8m</td><td> 52.5m</td><td>3848.6m</td><td>127.4%</td></tr>
+<tr><td>scrypt-jane SSSE3 64bit    </td><td>Salsa6420/8 </td><td>13.3m</td><td> 57.9m</td><td>4176.6m</td><td>122.7%</td></tr>
+<tr><td>scrypt-jane SSE2 64bit     </td><td>Salsa6420/8 </td><td>14.2m</td><td> 61.1m</td><td>4382.4m</td><td>120.6%</td></tr>
+<tr><td>scrypt-jane AVX 64bit      </td><td>ChaCha20/8  </td><td>18.0m</td><td> 77.4m</td><td>5396.8m</td><td>117.1%</td></tr>
+<tr><td>scrypt-jane AVX 32bit      </td><td>ChaCha20/8  </td><td>18.3m</td><td> 82.1m</td><td>5421.8m</td><td>115.7%</td></tr>
+<tr><td>scrypt-jane SSSE3 64bit    </td><td>ChaCha20/8  </td><td>19.0m</td><td> 81.3m</td><td>5600.7m</td><td>115.1%</td></tr>
+<tr><td>scrypt-jane AVX 64bit      </td><td>Salsa20/8   </td><td>19.0m</td><td> 81.2m</td><td>5610.6m</td><td>115.3%</td></tr>
+<tr><td>scrypt-jane AVX 32bit      </td><td>Salsa20/8   </td><td>19.0m</td><td> 81.3m</td><td>5621.6m</td><td>115.6%</td></tr>
+<tr><td>scrypt-jane SSSE3 32bit    </td><td>ChaCha20/8  </td><td>19.1m</td><td> 81.8m</td><td>5621.6m</td><td>115.0%</td></tr>
+<tr><td>scrypt-jane SSE2 64bit     </td><td>Salsa20/8   </td><td>19.5m</td><td> 83.8m</td><td>5772.9m</td><td>115.6%</td></tr>
+<tr><td>scrypt-jane SSE2 32bit     </td><td>Salsa20/8   </td><td>19.6m</td><td> 84.0m</td><td>5793.9m</td><td>115.5%</td></tr>
+<tr><td>*Reference SSE2/AVX 64bit* </td><td>Salsa20/8   </td><td>21.5m</td><td> 90.4m</td><td>6147.1m</td><td>111.7%</td></tr>
+<tr><td>*Reference SSE2/AVX 32bit* </td><td>Salsa20/8   </td><td>22.3m</td><td> 94.0m</td><td>6267.7m</td><td>110.0%</td></tr>
+<tr><td>scrypt-jane SSE2 64bit     </td><td>ChaCha20/8  </td><td>23.1m</td><td> 97.7m</td><td>6670.0m</td><td>112.8%</td></tr>
+<tr><td>scrypt-jane SSE2 32bit     </td><td>ChaCha20/8  </td><td>23.3m</td><td> 98.4m</td><td>6728.7m</td><td>112.8%</td></tr>
+<tr><td>*Reference SSE2 64bit*     </td><td>Salsa20/8   </td><td>30.4m</td><td>125.6m</td><td>8139.4m</td><td>104.6%</td></tr>
+<tr><td>*Reference SSE2 32bit*     </td><td>Salsa20/8   </td><td>30.0m</td><td>124.5m</td><td>8469.3m</td><td>110.3%</td></tr>
+</tbody>
+</table>
+
+* scrypt-jane Salsa6420/8-AVX is 1.60x - 1.82x faster than reference Salsa20/8-SSE2/AVX
+* scrypt-jane ChaCha20/8-AVX is 1.13x - 1.19x faster than reference Salsa20/8-SSE2/AVX
+* scrypt-jane Salsa20/8-AVX is 1.09x - 1.13x faster than reference Salsa20/8-SSE2/AVX
+
 
 # Building
 
