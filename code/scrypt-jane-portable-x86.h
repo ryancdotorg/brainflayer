@@ -56,20 +56,10 @@
 	#if defined(__SSSE3__)
 		#define X86_INTRINSIC_SSSE3
 	#endif
-#endif
-
-#if defined(COMPILER_GCC)
-	#if defined(__SSE__)
-		#define SYSTEM_SSE
-	#endif
-	#if defined(__SSE2__)
-		#define SYSTEM_SSE2
-	#endif
-	#if defined(__SSSE3__)
-		#define SYSTEM_SSSE3
+	#if defined(__AVX__)
+		#define X86_INTRINSIC_AVX
 	#endif
 #endif
-
 
 /* only use simd on windows (or SSE2 on gcc)! */
 #if defined(CPU_X86_FORCE_INTRINSICS) || defined(X86_INTRINSIC)
@@ -352,5 +342,23 @@ get_top_cpuflag_desc(size_t flag) {
 }
 #endif
 
+/* enable the highest system-wide option */
+#if defined(SCRYPT_CHOOSE_COMPILETIME)
+	#if !defined(__AVX__)
+		#undef X86_64ASM_AVX
+		#undef X86ASM_AVX
+		#undef X86_INTRINSIC_AVX
+	#endif
+	#if !defined(__SSSE3__)
+		#undef X86_64ASM_SSSE3
+		#undef X86ASM_SSSE3
+		#undef X86_INTRINSIC_SSSE3
+	#endif
+	#if !defined(__SSE2__)
+		#undef X86_64ASM_SSE2
+		#undef X86ASM_SSE2
+		#undef X86_INTRINSIC_SSE2
+	#endif
+#endif
 
 #endif /* defined(CPU_X86) || defined(CPU_X86_64) */
