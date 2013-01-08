@@ -1,5 +1,5 @@
 /* x86 */
-#if defined(X86ASM_SSSE3) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || (!defined(SCRYPT_CHACHA_INCLUDED) && defined(SYSTEM_SSSE3)))
+#if defined(X86ASM_SSSE3) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_CHACHA_INCLUDED))
 
 #define SCRYPT_CHACHA_SSSE3
 
@@ -126,7 +126,7 @@ asm_naked_fn_end(scrypt_ChunkMix_ssse3)
 
 
 /* x64 */
-#if defined(X86_64ASM_SSSE3) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || (!defined(SCRYPT_CHACHA_INCLUDED) && defined(SYSTEM_SSSE3)))
+#if defined(X86_64ASM_SSSE3) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_CHACHA_INCLUDED))
 
 #define SCRYPT_CHACHA_SSSE3
 
@@ -237,7 +237,7 @@ asm_naked_fn_end(scrypt_ChunkMix_ssse3)
 
 
 /* intrinsic */
-#if defined(X86_INTRINSIC_SSSE3) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_CHACHA_INCLUDED)) && !defined(SCRYPT_CHACHA_SSSE3)
+#if defined(X86_INTRINSIC_SSSE3) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_CHACHA_INCLUDED))
 
 #define SCRYPT_CHACHA_SSSE3
 

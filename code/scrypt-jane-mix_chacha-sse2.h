@@ -1,5 +1,5 @@
 /* x86 */
-#if defined(X86ASM_SSE2) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || (!defined(SCRYPT_CHACHA_INCLUDED) && defined(SYSTEM_SSE2)))
+#if defined(X86ASM_SSE2) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_CHACHA_INCLUDED))
 
 #define SCRYPT_CHACHA_SSE2
 
@@ -136,7 +136,7 @@ asm_naked_fn_end(scrypt_ChunkMix_sse2)
 
 
 /* x64 */
-#if defined(X86_64ASM_SSE2) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || (!defined(SCRYPT_CHACHA_INCLUDED) && defined(SYSTEM_SSE2)))
+#if defined(X86_64ASM_SSE2) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_CHACHA_INCLUDED))
 
 #define SCRYPT_CHACHA_SSE2
 
@@ -257,7 +257,7 @@ asm_naked_fn_end(scrypt_ChunkMix_sse2)
 
 
 /* intrinsic */
-#if defined(X86_INTRINSIC_SSE2) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_CHACHA_INCLUDED)) && !defined(SCRYPT_CHACHA_SSE2)
+#if defined(X86_INTRINSIC_SSE2) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_CHACHA_INCLUDED))
 
 #define SCRYPT_CHACHA_SSE2
 
