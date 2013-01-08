@@ -1,5 +1,5 @@
 /* x86 */
-#if defined(X86ASM_SSE2) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || (!defined(SCRYPT_SALSA_INCLUDED) && defined(SYSTEM_SSE2)))
+#if defined(X86ASM_SSE2) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_SALSA_INCLUDED))
 
 #define SCRYPT_SALSA_SSE2
 
@@ -144,7 +144,7 @@ asm_naked_fn_end(scrypt_ChunkMix_sse2)
 
 
 /* x64 */
-#if defined(X86_64ASM_SSE2) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || (!defined(SCRYPT_SALSA_INCLUDED) && defined(SYSTEM_SSE2)))
+#if defined(X86_64ASM_SSE2) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_SALSA_INCLUDED))
 
 #define SCRYPT_SALSA_SSE2
 
@@ -273,7 +273,7 @@ asm_naked_fn_end(scrypt_ChunkMix_sse2)
 
 
 /* intrinsic */
-#if defined(X86_INTRINSIC_SSE2) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_SALSA_INCLUDED)) && !defined(SCRYPT_SALSA_SSE2)
+#if defined(X86_INTRINSIC_SSE2) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_SALSA_INCLUDED))
 
 #define SCRYPT_SALSA_SSE2
 
@@ -404,6 +404,14 @@ scrypt_ChunkMix_sse2(uint32_t *Bout/*[chunkBytes]*/, uint32_t *Bin/*[chunkBytes]
 #endif
 
 #if defined(SCRYPT_SALSA_SSE2)
+	#undef SCRYPT_MIX
+	#define SCRYPT_MIX "Salsa/8-SSE2"
+	#undef SCRYPT_SALSA_INCLUDED
+	#define SCRYPT_SALSA_INCLUDED
+#endif
+
+/* used by avx,etc as well */
+#if defined(SCRYPT_SALSA_INCLUDED)
 	/*
 		Default layout:
 		 0  1  2  3
@@ -431,9 +439,5 @@ scrypt_ChunkMix_sse2(uint32_t *Bout/*[chunkBytes]*/, uint32_t *Bin/*[chunkBytes]
 			blocks += 16;
 		}
 	}
-
-	#undef SCRYPT_MIX
-	#define SCRYPT_MIX "Salsa/8-SSE2"
-	#undef SCRYPT_SALSA_INCLUDED
-	#define SCRYPT_SALSA_INCLUDED
 #endif
+
