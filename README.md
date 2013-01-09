@@ -53,7 +53,7 @@ Three different scrypt settings are tested (the last two are from the scrypt pap
 
 Cycle counts are in millions of cycles. All versions compiled with gcc 4.6.3, -O3. Sorted from fastest to slowest.
 
-Scaling refers to how much more expensive 'High Volume' is to compute than 'Non-Interactive', normalized to "ideal" scaling (256x difficulty). Under 100% means it becomes easier to process as N grows, over 100% means it becomes more difficult to process as N grows.
+Scaling refers to how much more expensive 'Non-Interactive' is to compute than 'High Volume', normalized to "ideal" scaling (256x difficulty). Under 100% means it becomes easier to process as N grows, over 100% means it becomes more difficult to process as N grows.
 
 
 <table>
