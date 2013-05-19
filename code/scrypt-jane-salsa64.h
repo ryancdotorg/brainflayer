@@ -78,18 +78,22 @@ scrypt_getROMix() {
 #if defined(SCRYPT_TEST_SPEED)
 static size_t
 available_implementations() {
+	size_t cpuflags = detect_cpu();
 	size_t flags = 0;
 
 #if defined(SCRYPT_SALSA64_AVX)
-	flags |= cpu_avx;
+	if (cpuflags & cpu_avx)
+		flags |= cpu_avx;
 #endif
 
 #if defined(SCRYPT_SALSA64_SSSE3)
-	flags |= cpu_ssse3;
+	if (cpuflags & cpu_ssse3)
+		flags |= cpu_ssse3;
 #endif
 
 #if defined(SCRYPT_SALSA64_SSE2)
-	flags |= cpu_sse2;
+	if (cpuflags & cpu_sse2)
+		flags |= cpu_sse2;
 #endif
 
 	return flags;
