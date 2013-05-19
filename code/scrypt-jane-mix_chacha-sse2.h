@@ -128,7 +128,7 @@ asm_naked_fn(scrypt_ChunkMix_sse2)
 	a1(pop esi)
 	a1(pop edi)
 	a1(pop ebx)
-	a1(ret 16)
+	aret(16)
 asm_naked_fn_end(scrypt_ChunkMix_sse2)
 
 #endif

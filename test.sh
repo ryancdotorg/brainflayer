@@ -1,7 +1,7 @@
 #!/bin/sh
 
 test() {
-	rm -f scrypt_test
+	sleep 0.25 # mingw is stupid and will occasionally not have permission to overwrite scrypt_test
 	gcc scrypt-jane-test.c -O3 -DSCRYPT_$1 -DSCRYPT_$2 $3 -o scrypt_test 2>/dev/null
 	local RC=$?
 	if [ $RC -ne 0 ]; then
@@ -10,7 +10,6 @@ test() {
 	fi
 	./scrypt_test >/dev/null
 	local RC=$?
-	rm -f scrypt_test
 	if [ $RC -ne 0 ]; then
 		echo "$1/$2: validation failed"
 		return
@@ -42,4 +41,4 @@ elif [ $1 -eq 64 ]; then
 	testhashes -m64
 fi
 
-
+rm -f scrypt_test

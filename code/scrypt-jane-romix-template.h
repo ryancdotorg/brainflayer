@@ -17,7 +17,7 @@
 
 	2*r: number of blocks in the chunk
 */
-static void STDCALL
+static void asm_calling_convention
 SCRYPT_CHUNKMIX_FN(scrypt_mix_word_t *Bout/*[chunkWords]*/, scrypt_mix_word_t *Bin/*[chunkWords]*/, scrypt_mix_word_t *Bxor/*[chunkWords]*/, uint32_t r) {
 	scrypt_mix_word_t MM16 X[SCRYPT_BLOCK_WORDS], *block;
 	uint32_t i, j, blocksPerChunk = r * 2, half = 0;

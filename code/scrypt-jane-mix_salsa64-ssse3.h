@@ -212,7 +212,7 @@ asm_naked_fn_end(scrypt_ChunkMix_ssse3)
 
 #define SCRYPT_SALSA64_SSSE3
 
-static void STDCALL
+static void asm_calling_convention
 scrypt_ChunkMix_ssse3(uint64_t *Bout/*[chunkBytes]*/, uint64_t *Bin/*[chunkBytes]*/, uint64_t *Bxor/*[chunkBytes]*/, uint32_t r) {
 	uint32_t i, blocksPerChunk = r * 2, half = 0;
 	xmmi *xmmp,x0,x1,x2,x3,x4,x5,x6,x7,t0,t1,t2,t3,t4,t5,t6,t7,z0,z1,z2,z3;
