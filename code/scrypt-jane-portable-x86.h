@@ -24,7 +24,7 @@
 	#endif
 #endif
 
-#if defined(COMPILER_MSVC)
+#if defined(COMPILER_MSVC) && (defined(CPU_X86_FORCE_INTRINSICS) || defined(CPU_X86_64))
 	#define X86_INTRINSIC
 	#if defined(CPU_X86_64) || defined(X86ASM_SSE)
 		#define X86_INTRINSIC_SSE
@@ -35,14 +35,6 @@
 	#if (COMPILER_MSVC >= 1400)
 		#define X86_INTRINSIC_SSSE3
 	#endif
-#endif
-
-#if defined(COMPILER_MSVC) && defined(CPU_X86_64)
-	#define X86_64USE_INTRINSIC
-#endif
-
-#if defined(COMPILER_MSVC) && defined(CPU_X86_64)
-	#define X86_64USE_INTRINSIC
 #endif
 
 #if defined(COMPILER_GCC) && defined(CPU_X86_FORCE_INTRINSICS)
@@ -147,6 +139,7 @@
 	#define asm_align16 a1(ALIGN 16)
 
 	#define asm_calling_convention STDCALL
+	#define aret(n) a1(ret n)
 	#define asm_naked_fn_proto(type, fn) static NAKED type asm_calling_convention fn
 	#define asm_naked_fn(fn) {
 	#define asm_naked_fn_end(fn) }

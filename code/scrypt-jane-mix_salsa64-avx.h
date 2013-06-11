@@ -1,5 +1,5 @@
 /* x64 */
-#if defined(X86_64ASM_AVX) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_SALSA64_INCLUDED))
+#if defined(X86_64ASM_AVX) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_SALSA64_INCLUDED)) && !defined(CPU_X86_FORCE_INTRINSICS)
 
 #define SCRYPT_SALSA64_AVX
 
@@ -176,7 +176,7 @@ asm_naked_fn_end(scrypt_ChunkMix_avx)
 
 
 /* intrinsic */
-#if defined(X86_INTRINSIC_AVX) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_SALSA64_INCLUDED)) && !defined(SCRYPT_SALSA64_AVX)
+#if defined(X86_INTRINSIC_AVX) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_SALSA64_INCLUDED))
 
 #define SCRYPT_SALSA64_AVX
 

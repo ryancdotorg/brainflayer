@@ -1,5 +1,5 @@
 /* x64 */
-#if defined(X86_64ASM_SSE2) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_SALSA64_INCLUDED))
+#if defined(X86_64ASM_SSE2) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_SALSA64_INCLUDED)) && !defined(CPU_X86_FORCE_INTRINSICS)
 
 #define SCRYPT_SALSA64_SSE2
 
@@ -220,7 +220,7 @@ asm_naked_fn_end(scrypt_ChunkMix_sse2)
 
 
 /* intrinsic */
-#if defined(X86_INTRINSIC_SSE2) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_SALSA64_INCLUDED)) && !defined(SCRYPT_SALSA64_SSE2)
+#if defined(X86_INTRINSIC_SSE2) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_SALSA64_INCLUDED))
 
 #define SCRYPT_SALSA64_SSE2
 

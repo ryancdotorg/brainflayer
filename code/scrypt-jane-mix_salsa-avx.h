@@ -1,5 +1,5 @@
 /* x86 */
-#if defined(X86ASM_AVX) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_SALSA_INCLUDED))
+#if defined(X86ASM_AVX) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_SALSA_INCLUDED)) && !defined(CPU_X86_FORCE_INTRINSICS)
 
 #define SCRYPT_SALSA_AVX
 
@@ -128,7 +128,7 @@ asm_naked_fn_end(scrypt_ChunkMix_avx)
 
 
 /* x64 */
-#if defined(X86_64ASM_AVX) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_SALSA_INCLUDED))
+#if defined(X86_64ASM_AVX) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_SALSA_INCLUDED)) && !defined(CPU_X86_FORCE_INTRINSICS)
 
 #define SCRYPT_SALSA_AVX
 
@@ -245,7 +245,7 @@ asm_naked_fn_end(scrypt_ChunkMix_avx)
 
 #define SCRYPT_SALSA_AVX
 
-static void NOINLINE
+static void asm_calling_convention NOINLINE
 scrypt_ChunkMix_avx(uint32_t *Bout/*[chunkBytes]*/, uint32_t *Bin/*[chunkBytes]*/, uint32_t *Bxor/*[chunkBytes]*/, uint32_t r) {
 	uint32_t i, blocksPerChunk = r * 2, half = 0;
 	xmmi *xmmp,x0,x1,x2,x3,x4,x5,t0,t1,t2,t3;

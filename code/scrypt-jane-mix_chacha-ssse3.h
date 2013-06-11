@@ -1,5 +1,5 @@
 /* x86 */
-#if defined(X86ASM_SSSE3) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_CHACHA_INCLUDED))
+#if defined(X86ASM_SSSE3) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_CHACHA_INCLUDED)) && !defined(CPU_X86_FORCE_INTRINSICS)
 
 #define SCRYPT_CHACHA_SSSE3
 
@@ -146,7 +146,7 @@ asm_naked_fn_end(scrypt_ChunkMix_ssse3)
 
 
 /* x64 */
-#if defined(X86_64ASM_SSSE3) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_CHACHA_INCLUDED))
+#if defined(X86_64ASM_SSSE3) && (!defined(SCRYPT_CHOOSE_COMPILETIME) || !defined(SCRYPT_CHACHA_INCLUDED)) && !defined(CPU_X86_FORCE_INTRINSICS)
 
 #define SCRYPT_CHACHA_SSSE3
 
@@ -269,7 +269,7 @@ asm_naked_fn_end(scrypt_ChunkMix_ssse3)
 
 #define SCRYPT_CHACHA_SSSE3
 
-static void NOINLINE
+static void NOINLINE asm_calling_convention
 scrypt_ChunkMix_ssse3(uint32_t *Bout/*[chunkBytes]*/, uint32_t *Bin/*[chunkBytes]*/, uint32_t *Bxor/*[chunkBytes]*/, uint32_t r) {
 	uint32_t i, blocksPerChunk = r * 2, half = 0;
 	xmmi *xmmp,x0,x1,x2,x3,x6,t0,t1,t2,t3;
