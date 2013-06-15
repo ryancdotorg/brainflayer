@@ -133,8 +133,7 @@
 	#define a2(x, y) __asm {x, y}
 	#define a3(x, y, z) __asm {x, y, z}
 	#define a4(x, y, z, w) __asm {x, y, z, w}
-	#define al(x) __asm {label##x:}
-	#define aj(x, y, z) __asm {x label##y}
+	#define aj(x) __asm {x}
 	#define asm_align8 a1(ALIGN 8)
 	#define asm_align16 a1(ALIGN 16)
 
@@ -148,28 +147,25 @@
 	#define GNU_AS2(x, y) #x ", " #y ";\n"
 	#define GNU_AS3(x, y, z) #x ", " #y ", " #z ";\n"
 	#define GNU_AS4(x, y, z, w) #x ", " #y ", " #z ", " #w ";\n"
-	#define GNU_ASL(x) "\n" #x ":\n"
 	#define GNU_ASFN(x) "\n_" #x ":\n" #x ":\n"
-	#define GNU_ASJ(x, y, z) #x " " #y #z ";"
+	#define GNU_ASJ(x) ".att_syntax prefix\n" #x "\n.intel_syntax noprefix\n"
 
 	#define a1(x) GNU_AS1(x)
 	#define a2(x, y) GNU_AS2(x, y)
 	#define a3(x, y, z) GNU_AS3(x, y, z)
 	#define a4(x, y, z, w) GNU_AS4(x, y, z, w)
-	#define al(x) GNU_ASL(x)
-	#define aj(x, y, z) GNU_ASJ(x, y, z)
-	#define asm_align8 a1(.align 8)
-	#define asm_align16 a1(.align 16)
+	#define aj(x) GNU_ASJ(x)
+	#define asm_align8 ".p2align 3,,7"
+	#define asm_align16 ".p2align 4,,15"
 
 	#if defined(OS_WINDOWS)
 		#define asm_calling_convention CDECL
 		#define aret(n) a1(ret)
-		#define asm_naked_fn_end(fn) ".att_syntax prefix;\n" );
 	#else
 		#define asm_calling_convention STDCALL
 		#define aret(n) a1(ret n)
-		#define asm_naked_fn_end(fn) ".att_syntax prefix;\n.type  " #fn ",@function\n.size " #fn ",.-" #fn "\n" );
 	#endif
+	#define asm_naked_fn_end(fn) ".att_syntax prefix;\n" );
 	#define asm_naked_fn_proto(type, fn) extern type asm_calling_convention fn
 	#define asm_naked_fn(fn) ; __asm__ (".intel_syntax noprefix;\n.text\n" asm_align16 GNU_ASFN(fn)
 
