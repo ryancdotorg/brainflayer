@@ -6,7 +6,7 @@ typedef struct scrypt_test_setting_t {
 static const scrypt_test_setting post_settings[] = {
 	{"", "", 3, 0, 0},
 	{"password", "NaCl", 9, 3, 4},
-	{0}
+	{0, 0, 0, 0, 0}
 };
 
 #if defined(SCRYPT_SHA256)
