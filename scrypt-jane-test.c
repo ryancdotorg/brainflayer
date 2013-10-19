@@ -1,7 +1,7 @@
 #define SCRYPT_TEST
 #include "scrypt-jane.c"
 
-int main() {
+int main(void) {
 	int res = scrypt_power_on_self_test();
 
 	printf("%s: test %s\n", SCRYPT_MIX, (res & 1) ? "ok" : "FAILED");

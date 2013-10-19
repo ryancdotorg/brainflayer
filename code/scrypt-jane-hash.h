@@ -28,7 +28,7 @@
 #define SCRYPT_TEST_HASH_LEN 257 /* (2 * largest block size) + 1 */
 
 static int
-scrypt_test_hash() {
+scrypt_test_hash(void) {
 	scrypt_hash_state st;
 	scrypt_hash_digest hash, final;
 	uint8_t msg[SCRYPT_TEST_HASH_LEN];

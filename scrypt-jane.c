@@ -43,7 +43,7 @@ scrypt_set_fatal_error(scrypt_fatal_errorfn fn) {
 }
 
 static int
-scrypt_power_on_self_test() {
+scrypt_power_on_self_test(void) {
 	const scrypt_test_setting *t;
 	uint8_t test_digest[64];
 	uint32_t i;
