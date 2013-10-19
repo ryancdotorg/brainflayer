@@ -38,7 +38,7 @@ scrypt_fatal_error_default(const char *msg) {
 static scrypt_fatal_errorfn scrypt_fatal_error = scrypt_fatal_error_default;
 
 void
-scrypt_set_fatal_error_default(scrypt_fatal_errorfn fn) {
+scrypt_set_fatal_error(scrypt_fatal_errorfn fn) {
 	scrypt_fatal_error = fn;
 }
 
