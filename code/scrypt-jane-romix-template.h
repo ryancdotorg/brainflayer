@@ -69,7 +69,7 @@ SCRYPT_CHUNKMIX_FN(scrypt_mix_word_t *Bout/*[chunkWords]*/, scrypt_mix_word_t *B
 
 static void NOINLINE FASTCALL
 SCRYPT_ROMIX_FN(scrypt_mix_word_t *X/*[chunkWords]*/, scrypt_mix_word_t *Y/*[chunkWords]*/, scrypt_mix_word_t *V/*[N * chunkWords]*/, uint32_t N, uint32_t r) {
-	uint32_t i, j, chunkWords = SCRYPT_BLOCK_WORDS * r * 2;
+	uint32_t i, j, chunkWords = (uint32_t)(SCRYPT_BLOCK_WORDS * r * 2);
 	scrypt_mix_word_t *block = V;
 
 	SCRYPT_ROMIX_TANGLE_FN(X, r * 2);
