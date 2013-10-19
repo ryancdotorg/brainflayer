@@ -65,6 +65,8 @@
 	#define ROTR64(a,b) _rotr64(a,b)
 	#undef NOINLINE
 	#define NOINLINE __declspec(noinline)
+	#undef NORETURN
+	#define NORETURN
 	#undef INLINE
 	#define INLINE __forceinline
 	#undef FASTCALL
@@ -96,6 +98,12 @@
 		#define NOINLINE __attribute__((noinline))
 	#else
 		#define NOINLINE
+	#endif
+	#undef NORETURN
+	#if (COMPILER_GCC >= 30000)
+		#define NORETURN __attribute__((noreturn))
+	#else
+		#define NORETURN
 	#endif
 	#undef INLINE
 	#if (COMPILER_GCC >= 30000)

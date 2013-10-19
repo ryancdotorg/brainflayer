@@ -29,7 +29,7 @@
 #include <stdio.h>
 //#include <malloc.h>
 
-static void
+static void NORETURN
 scrypt_fatal_error_default(const char *msg) {
 	fprintf(stderr, "%s\n", msg);
 	exit(1);
