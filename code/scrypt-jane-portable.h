@@ -247,7 +247,7 @@ scrypt_verify(const uint8_t *x, const uint8_t *y, size_t len) {
 	return (1 & ((differentbits - 1) >> 8));
 }
 
-void
+static void
 scrypt_ensure_zero(void *p, size_t len) {
 #if ((defined(CPU_X86) || defined(CPU_X86_64)) && defined(COMPILER_MSVC))
 		__stosb((unsigned char *)p, 0, len);
