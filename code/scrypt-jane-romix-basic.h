@@ -6,6 +6,7 @@ typedef void (FASTCALL *scrypt_ROMixfn)(scrypt_mix_word_t *X/*[chunkWords]*/, sc
 /* romix pre/post nop function */
 static void asm_calling_convention
 scrypt_romix_nop(scrypt_mix_word_t *blocks, size_t nblocks) {
+  (void)blocks; (void)nblocks;
 }
 
 /* romix pre/post endian conversion function */
