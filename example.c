@@ -2,7 +2,7 @@
 #include "scrypt-jane.h"
 
 
-int main() {
+int main(void) {
 	unsigned char digest[16];
 	int i;
 	scrypt("pw", 2, "salt", 4, 0, 0, 0, digest, 16);

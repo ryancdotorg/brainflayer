@@ -63,7 +63,7 @@ static const scrypt_speed_settings settings[] = {
 	{0}
 };
 
-int main() {
+int main(void) {
 	const scrypt_speed_settings *s;
 	uint8_t password[64], salt[24], digest[64];
 	uint64_t minticks, ticks;

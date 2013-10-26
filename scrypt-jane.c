@@ -27,9 +27,9 @@
 #define scrypt_maxp 25  /* (1 << 25) = ~33 million */
 
 #include <stdio.h>
-#include <malloc.h>
+//#include <malloc.h>
 
-static void
+static void NORETURN
 scrypt_fatal_error_default(const char *msg) {
 	fprintf(stderr, "%s\n", msg);
 	exit(1);
@@ -38,12 +38,12 @@ scrypt_fatal_error_default(const char *msg) {
 static scrypt_fatal_errorfn scrypt_fatal_error = scrypt_fatal_error_default;
 
 void
-scrypt_set_fatal_error_default(scrypt_fatal_errorfn fn) {
+scrypt_set_fatal_error(scrypt_fatal_errorfn fn) {
 	scrypt_fatal_error = fn;
 }
 
 static int
-scrypt_power_on_self_test() {
+scrypt_power_on_self_test(void) {
 	const scrypt_test_setting *t;
 	uint8_t test_digest[64];
 	uint32_t i;
