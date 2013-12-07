@@ -51,7 +51,7 @@ Three different scrypt settings are tested (the last two are from the scrypt pap
 * 'Interactive': N=16384, r=8, p=1, 16mb memory
 * 'Non-Interactive': N=1048576, r=8, p=1, 1gb memory
 
-__Note__: Benchmark settings are adjusted based on the underlying block size to keep memory usage consistent with default scrypt. This means Salsa64 has r=7 due to having a 128 byte block size. A 256 byte block size would have r=6, 512 would have r=5, etc. Additionally, this means Salsa6420/8 is doing half the rounds/byte of default scrypt, but has 64 bit word mixing vs 32 bit, and thus does somewhat less overall mixing. Salsa6420/~10-12 would be needed to maintain equivalent overall mixing.
+__Note__: Benchmark settings are adjusted based on the underlying block size to keep memory usage consistent with default scrypt. This means Salsa64 has r=4 due to having a 128 byte block size. A 256 byte block size would have r=2, 512 byte block would have r=1, etc. Additionally, this means Salsa6420/8 is doing half the rounds/byte of default scrypt, but has 64 bit word mixing vs 32 bit, and thus does somewhat less overall mixing. Salsa6420/~10-12 would be needed to maintain equivalent overall mixing.
 
 Cycle counts are in millions of cycles. All versions compiled with gcc 4.6.3, -O3. Sorted from fastest to slowest.
 
