@@ -161,13 +161,51 @@
 	#if defined(OS_WINDOWS)
 		#define asm_calling_convention CDECL
 		#define aret(n) a1(ret)
+
+		#if defined(X86_64ASM)
+			#define asm_naked_fn(fn) ; __asm__ ( \
+				".text\n"                        \
+				asm_align16 GNU_ASFN(fn)         \
+				"subq $136, %rsp;"               \
+			 	"movdqa %xmm6, 0(%rsp);"         \
+				"movdqa %xmm7, 16(%rsp);"        \
+			 	"movdqa %xmm8, 32(%rsp);"        \
+				"movdqa %xmm9, 48(%rsp);"        \
+			 	"movdqa %xmm10, 64(%rsp);"       \
+				"movdqa %xmm11, 80(%rsp);"       \
+				"movdqa %xmm12, 96(%rsp);"       \
+				"movq %rdi, 112(%rsp);"          \
+				"movq %rsi, 120(%rsp);"          \
+				"movq %rcx, %rdi;"               \
+				"movq %rdx, %rsi;"               \
+				"movq %r8, %rdx;"                \
+				"movq %r9, %rcx;"                \
+				"call 1f;"                       \
+				"movdqa 0(%rsp), %xmm6;"         \
+				"movdqa 16(%rsp), %xmm7;"        \
+				"movdqa 32(%rsp), %xmm8;"        \
+				"movdqa 48(%rsp), %xmm9;"        \
+				"movdqa 64(%rsp), %xmm10;"       \
+				"movdqa 80(%rsp), %xmm11;"       \
+				"movdqa 96(%rsp), %xmm12;"       \
+				"movq 112(%rsp), %rdi;"          \
+				"movq 120(%rsp), %rsi;"          \
+				"addq $136, %rsp;"               \
+				"ret;"                           \
+				".intel_syntax noprefix;"        \
+				".p2align 4,,15;"                \
+				"1:;"
+		#else
+			#define asm_naked_fn(fn) ; __asm__ (".intel_syntax noprefix;\n.text\n" asm_align16 GNU_ASFN(fn)
+		#endif
 	#else
 		#define asm_calling_convention STDCALL
-		#define aret(n) a1(ret n)
+		#define aret(n) a1(ret n)		
+		#define asm_naked_fn(fn) ; __asm__ (".intel_syntax noprefix;\n.text\n" asm_align16 GNU_ASFN(fn)
 	#endif
-	#define asm_naked_fn_end(fn) ".att_syntax prefix;\n" );
+
 	#define asm_naked_fn_proto(type, fn) extern type asm_calling_convention fn
-	#define asm_naked_fn(fn) ; __asm__ (".intel_syntax noprefix;\n.text\n" asm_align16 GNU_ASFN(fn)
+	#define asm_naked_fn_end(fn) ".att_syntax prefix;\n" );
 
 	#define asm_gcc() __asm__ __volatile__(".intel_syntax noprefix;\n"
 	#define asm_gcc_parms() ".att_syntax prefix;"

@@ -9,7 +9,7 @@ asm_naked_fn(scrypt_ChunkMix_ssse3)
 	a2(mov rbp, rsp)
 	a2(and rsp, ~63)
 	a2(sub rsp, 128)
-	a2(lea rcx,[rcx*2])
+	a2(lea rcx,[ecx*2]) /* zero extend uint32_t by using ecx, win64 can leave garbage in the top half */
 	a2(shl rcx,7)
 	a2(lea r9,[rcx-128])
 	a2(lea rax,[rsi+r9])

@@ -142,7 +142,7 @@ asm_naked_fn_end(scrypt_ChunkMix_sse2)
 
 asm_naked_fn_proto(void, scrypt_ChunkMix_sse2)(uint32_t *Bout/*[chunkBytes]*/, uint32_t *Bin/*[chunkBytes]*/, uint32_t *Bxor/*[chunkBytes]*/, uint32_t r)
 asm_naked_fn(scrypt_ChunkMix_sse2)
-	a2(lea rcx,[rcx*2])
+	a2(lea rcx,[ecx*2]) /* zero extend uint32_t by using ecx, win64 can leave garbage in the top half */
 	a2(shl rcx,6)
 	a2(lea r9,[rcx-64])
 	a2(lea rax,[rsi+r9])
