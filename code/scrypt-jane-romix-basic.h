@@ -34,7 +34,11 @@ static int
 scrypt_test_mix_instance(chunkmixfn mixfn, blockfixfn prefn, blockfixfn postfn, const uint8_t expected[16]) {
 	/* r = 2, (2 * r) = 4 blocks in a chunk, 4 * SCRYPT_BLOCK_WORDS total */
 	const uint32_t r = 2, blocks = 2 * r, words = blocks * SCRYPT_BLOCK_WORDS;
-	scrypt_mix_word_t MM16 chunk[2][4 * SCRYPT_BLOCK_WORDS], v;
+#if (defined(X86ASM_AVX2) || defined(X86_64ASM_AVX2) || defined(X86_INTRINSIC_AVX2))
+	scrypt_mix_word_t ALIGN(32) chunk[2][4 * SCRYPT_BLOCK_WORDS], v;
+#else
+	scrypt_mix_word_t ALIGN(16) chunk[2][4 * SCRYPT_BLOCK_WORDS], v;
+#endif
 	uint8_t final[16];
 	size_t i;
 

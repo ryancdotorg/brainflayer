@@ -19,7 +19,11 @@
 */
 static void asm_calling_convention
 SCRYPT_CHUNKMIX_FN(scrypt_mix_word_t *Bout/*[chunkWords]*/, scrypt_mix_word_t *Bin/*[chunkWords]*/, scrypt_mix_word_t *Bxor/*[chunkWords]*/, uint32_t r) {
-	scrypt_mix_word_t MM16 X[SCRYPT_BLOCK_WORDS], *block;
+#if (defined(X86ASM_AVX2) || defined(X86_64ASM_AVX2) || defined(X86_INTRINSIC_AVX2))
+	scrypt_mix_word_t ALIGN(32) X[SCRYPT_BLOCK_WORDS], *block;
+#else
+	scrypt_mix_word_t ALIGN(16) X[SCRYPT_BLOCK_WORDS], *block;
+#endif
 	uint32_t i, j, blocksPerChunk = r * 2, half = 0;
 
 	/* 1: X = B_{2r - 1} */

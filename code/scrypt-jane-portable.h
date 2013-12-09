@@ -36,14 +36,29 @@
 
 /* determine compiler */
 #if defined(_MSC_VER)
-	#define COMPILER_MSVC _MSC_VER
-	#if ((COMPILER_MSVC > 1200) || defined(_mm_free))
-		#define COMPILER_MSVC6PP_AND_LATER
+	#define COMPILER_MSVC_VS6       120000000
+	#define COMPILER_MSVC_VS6PP     121000000
+	#define COMPILER_MSVC_VS2002    130000000
+	#define COMPILER_MSVC_VS2003    131000000
+	#define COMPILER_MSVC_VS2005    140050727
+	#define COMPILER_MSVC_VS2008    150000000
+	#define COMPILER_MSVC_VS2008SP1 150030729
+	#define COMPILER_MSVC_VS2010    160000000
+	#define COMPILER_MSVC_VS2010SP1 160040219
+	#define COMPILER_MSVC_VS2012RC  170000000
+	#define COMPILER_MSVC_VS2012    170050727
+
+	#if _MSC_FULL_VER > 100000000
+		#define COMPILER_MSVC (_MSC_FULL_VER)
+	#else
+		#define COMPILER_MSVC (_MSC_FULL_VER * 10)
 	#endif
-	#if (COMPILER_MSVC >= 1500)
-		#define COMPILER_HAS_TMMINTRIN
+
+	#if ((_MSC_VER == 1200) && defined(_mm_free))
+		#undef COMPILER_MSVC
+		#define COMPILER_MSVC COMPILER_MSVC_VS6PP
 	#endif
-	
+
 	#pragma warning(disable : 4127) /* conditional expression is constant */
 	#pragma warning(disable : 4100) /* unreferenced formal parameter */
 	
@@ -77,7 +92,7 @@
 	#define STDCALL __stdcall
 	#undef NAKED
 	#define NAKED __declspec(naked)
-	#define MM16 __declspec(align(16))
+	#define ALIGN(n) __declspec(align(n))
 #endif
 #if defined(__ICC)
 	#define COMPILER_INTEL
@@ -121,7 +136,7 @@
 	#define CDECL __attribute__((cdecl))
 	#undef STDCALL
 	#define STDCALL __attribute__((stdcall))
-	#define MM16 __attribute__((aligned(16)))
+	#define ALIGN(n) __attribute__((aligned(n)))
 	#include <stdint.h>
 #endif
 #if defined(__MINGW32__) || defined(__MINGW64__)

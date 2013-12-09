@@ -1,15 +1,20 @@
 #if defined(CPU_X86) && (defined(COMPILER_MSVC) || defined(COMPILER_GCC))
 	#define X86ASM
+
 	/* gcc 2.95 royally screws up stack alignments on variables */
-	#if (defined(COMPILER_MSVC6PP_AND_LATER) || (defined(COMPILER_GCC) && (COMPILER_GCC >= 30000)))
+	#if ((defined(COMPILER_MSVC) && (COMPILER_MSVC >= COMPILER_MSVC_VS6PP)) || (defined(COMPILER_GCC) && (COMPILER_GCC >= 30000)))
 		#define X86ASM_SSE
 		#define X86ASM_SSE2
 	#endif
-	#if ((defined(COMPILER_MSVC) && (COMPILER_MSVC >= 1400)) || (defined(COMPILER_GCC) && (COMPILER_GCC >= 40102)))
+	#if ((defined(COMPILER_MSVC) && (COMPILER_MSVC >= COMPILER_MSVC_VS2005)) || (defined(COMPILER_GCC) && (COMPILER_GCC >= 40102)))
 		#define X86ASM_SSSE3
 	#endif
-	#if ((defined(COMPILER_GCC) && (COMPILER_GCC >= 40400)))
+	#if ((defined(COMPILER_MSVC) && (COMPILER_MSVC >= COMPILER_MSVC_VS2010SP1)) || (defined(COMPILER_GCC) && (COMPILER_GCC >= 40400)))
 		#define X86ASM_AVX
+		#define X86ASM_XOP
+	#endif
+	#if ((defined(COMPILER_MSVC) && (COMPILER_MSVC >= COMPILER_MSVC_VS2012)) || (defined(COMPILER_GCC) && (COMPILER_GCC >= 40700)))
+		#define X86ASM_AVX2
 	#endif
 #endif
 
@@ -21,6 +26,10 @@
 	#endif
 	#if (COMPILER_GCC >= 40400)
 		#define X86_64ASM_AVX
+		#define X86_64ASM_XOP
+	#endif
+	#if (COMPILER_GCC >= 40700)
+		#define X86_64ASM_AVX2
 	#endif
 #endif
 
@@ -32,8 +41,15 @@
 	#if defined(CPU_X86_64) || defined(X86ASM_SSE2)
 		#define X86_INTRINSIC_SSE2
 	#endif
-	#if (COMPILER_MSVC >= 1400)
+	#if (COMPILER_MSVC >= COMPILER_MSVC_VS2005)
 		#define X86_INTRINSIC_SSSE3
+	#endif
+	#if (COMPILER_MSVC >= COMPILER_MSVC_VS2010SP1)
+		#define X86_INTRINSIC_AVX
+		#define X86_INTRINSIC_XOP
+	#endif
+	#if (COMPILER_MSVC >= COMPILER_MSVC_VS2012)
+		#define X86_INTRINSIC_AVX2
 	#endif
 #endif
 
@@ -51,12 +67,17 @@
 	#if defined(__AVX__)
 		#define X86_INTRINSIC_AVX
 	#endif
+	#if defined(__XOP__)
+		#define X86_INTRINSIC_XOP
+	#endif
+	#if defined(__AVX2__)
+		#define X86_INTRINSIC_AVX2
+	#endif
 #endif
 
 /* only use simd on windows (or SSE2 on gcc)! */
 #if defined(CPU_X86_FORCE_INTRINSICS) || defined(X86_INTRINSIC)
 	#if defined(X86_INTRINSIC_SSE)
-		#define X86_INTRINSIC
 		#include <mmintrin.h>
 		#include <xmmintrin.h>
 		typedef __m64 qmm;
@@ -64,16 +85,26 @@
 		typedef __m128d xmmd;
 	#endif
 	#if defined(X86_INTRINSIC_SSE2)
-		#define X86_INTRINSIC_SSE2
 		#include <emmintrin.h>
 		typedef __m128i xmmi;
 	#endif
 	#if defined(X86_INTRINSIC_SSSE3)
-		#define X86_INTRINSIC_SSSE3
 		#include <tmmintrin.h>
 	#endif
+	#if defined(X86_INTRINSIC_AVX)
+		#include <immintrin.h>
+	#endif
+	#if defined(X86_INTRINSIC_XOP)
+		#if defined(COMPILER_MSVC)
+			#include <intrin.h>
+		#else
+			#include <x86intrin.h>
+		#endif
+	#endif
+	#if defined(X86_INTRINSIC_AVX2)
+		typedef __m256i ymmi;
+	#endif
 #endif
-
 
 #if defined(X86_INTRINSIC_SSE2)
 	typedef union packedelem8_t {
@@ -108,8 +139,8 @@
 #endif
 
 #if defined(X86_INTRINSIC_SSSE3)
-	static const packedelem8 MM16 ssse3_rotl16_32bit      = {{2,3,0,1,6,7,4,5,10,11,8,9,14,15,12,13}};
-	static const packedelem8 MM16 ssse3_rotl8_32bit       = {{3,0,1,2,7,4,5,6,11,8,9,10,15,12,13,14}};
+	static const packedelem8 ALIGN(16) ssse3_rotl16_32bit      = {{2,3,0,1,6,7,4,5,10,11,8,9,14,15,12,13}};
+	static const packedelem8 ALIGN(16) ssse3_rotl8_32bit       = {{3,0,1,2,7,4,5,6,11,8,9,10,15,12,13,14}};
 #endif
 
 /*
@@ -228,7 +259,9 @@ typedef enum cpu_flags_x86_t {
 	cpu_ssse3 = 1 << 4,
 	cpu_sse4_1 = 1 << 5,
 	cpu_sse4_2 = 1 << 6,
-	cpu_avx = 1 << 7
+	cpu_avx = 1 << 7,
+	cpu_xop = 1 << 8,
+	cpu_avx2 = 1 << 9
 } cpu_flags_x86;
 
 typedef enum cpu_vendors_x86_t {
@@ -275,6 +308,7 @@ get_cpuid(x86_regs *regs, uint32_t flags) {
 
 	asm_gcc()
 		a1(push cpuid_bx)
+		a2(xor ecx, ecx)
 		a1(cpuid)
 		a2(mov [%1 + 0], eax)
 		a2(mov [%1 + 4], ebx)
@@ -311,7 +345,7 @@ detect_cpu(void) {
 	union { uint8_t s[12]; uint32_t i[3]; } vendor_string;
 	cpu_vendors_x86 vendor = cpu_nobody;
 	x86_regs regs;
-	uint32_t max_level;
+	uint32_t max_level, max_ext_level;
 	size_t cpu_flags = 0;
 #if defined(X86ASM_AVX) || defined(X86_64ASM_AVX)
 	uint64_t xgetbv_flags;
@@ -357,7 +391,22 @@ detect_cpu(void) {
 	if (regs.edx & (1 << 26)) cpu_flags |= cpu_sse2;
 	if (regs.edx & (1 << 25)) cpu_flags |= cpu_sse;
 	if (regs.edx & (1 << 23)) cpu_flags |= cpu_mmx;
-	
+
+	if (cpu_flags & cpu_avx) {
+		if (max_level >= 7) {
+			get_cpuid(&regs, 7);
+			if (regs.ebx & (1 << 5)) cpu_flags |= cpu_avx2;
+		}
+
+		get_cpuid(&regs, 0x80000000);
+		max_ext_level = regs.eax;
+		if (max_ext_level >= 0x80000001) {
+			get_cpuid(&regs, 0x80000001);
+			if (regs.ecx & (1 << 11)) cpu_flags |= cpu_xop;
+		}
+	}
+
+
 #if defined(SCRYPT_TEST_SPEED)
 	cpu_flags &= cpu_detect_mask;
 #endif
@@ -368,7 +417,9 @@ detect_cpu(void) {
 #if defined(SCRYPT_TEST_SPEED)
 static const char *
 get_top_cpuflag_desc(size_t flag) {
-	if (flag & cpu_avx) return "AVX";
+	if (flag & cpu_avx2) return "AVX2";
+	else if (flag & cpu_xop) return "XOP";
+	else if (flag & cpu_avx) return "AVX";
 	else if (flag & cpu_sse4_2) return "SSE4.2";
 	else if (flag & cpu_sse4_1) return "SSE4.1";
 	else if (flag & cpu_ssse3) return "SSSE3";
@@ -381,6 +432,16 @@ get_top_cpuflag_desc(size_t flag) {
 
 /* enable the highest system-wide option */
 #if defined(SCRYPT_CHOOSE_COMPILETIME)
+	#if !defined(__AVX2__)
+		#undef X86_64ASM_AVX2
+		#undef X86ASM_AVX2
+		#undef X86_INTRINSIC_AVX2
+	#endif
+	#if !defined(__XOP__)
+		#undef X86_64ASM_XOP
+		#undef X86ASM_XOP
+		#undef X86_INTRINSIC_XOP
+	#endif
 	#if !defined(__AVX__)
 		#undef X86_64ASM_AVX
 		#undef X86ASM_AVX
