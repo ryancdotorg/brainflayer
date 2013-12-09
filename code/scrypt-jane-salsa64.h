@@ -11,10 +11,28 @@ typedef uint64_t scrypt_mix_word_t;
 /* must have these here in case block bytes is ever != 64 */
 #include "scrypt-jane-romix-basic.h"
 
+#include "scrypt-jane-mix_salsa64-avx2.h"
+#include "scrypt-jane-mix_salsa64-xop.h"
 #include "scrypt-jane-mix_salsa64-avx.h"
 #include "scrypt-jane-mix_salsa64-ssse3.h"
 #include "scrypt-jane-mix_salsa64-sse2.h"
 #include "scrypt-jane-mix_salsa64.h"
+
+#if defined(SCRYPT_SALSA64_AVX2)
+	#define SCRYPT_CHUNKMIX_FN scrypt_ChunkMix_avx2
+	#define SCRYPT_ROMIX_FN scrypt_ROMix_avx2
+	#define SCRYPT_ROMIX_TANGLE_FN salsa64_core_tangle_sse2
+	#define SCRYPT_ROMIX_UNTANGLE_FN salsa64_core_tangle_sse2
+	#include "scrypt-jane-romix-template.h"
+#endif
+
+#if defined(SCRYPT_SALSA64_XOP)
+	#define SCRYPT_CHUNKMIX_FN scrypt_ChunkMix_xop
+	#define SCRYPT_ROMIX_FN scrypt_ROMix_xop
+	#define SCRYPT_ROMIX_TANGLE_FN salsa64_core_tangle_sse2
+	#define SCRYPT_ROMIX_UNTANGLE_FN salsa64_core_tangle_sse2
+	#include "scrypt-jane-romix-template.h"
+#endif
 
 #if defined(SCRYPT_SALSA64_AVX)
 	#define SCRYPT_CHUNKMIX_FN scrypt_ChunkMix_avx
@@ -52,6 +70,18 @@ static scrypt_ROMixfn
 scrypt_getROMix(void) {
 	size_t cpuflags = detect_cpu();
 
+#if defined(SCRYPT_SALSA64_AVX2)
+	if (cpuflags & cpu_avx2)
+		return scrypt_ROMix_avx2;
+	else
+#endif
+
+#if defined(SCRYPT_SALSA64_XOP)
+	if (cpuflags & cpu_xop)
+		return scrypt_ROMix_xop;
+	else
+#endif
+
 #if defined(SCRYPT_SALSA64_AVX)
 	if (cpuflags & cpu_avx)
 		return scrypt_ROMix_avx;
@@ -81,6 +111,16 @@ available_implementations(void) {
 	size_t cpuflags = detect_cpu();
 	size_t flags = 0;
 
+#if defined(SCRYPT_SALSA64_AVX2)
+	if (cpuflags & cpu_avx2)
+		flags |= cpu_avx2;
+#endif
+
+#if defined(SCRYPT_SALSA64_XOP)
+	if (cpuflags & cpu_xop)
+		flags |= cpu_xop;
+#endif
+
 #if defined(SCRYPT_SALSA64_AVX)
 	if (cpuflags & cpu_avx)
 		flags |= cpu_avx;
@@ -108,6 +148,16 @@ scrypt_test_mix(void) {
 
 	int ret = 1;
 	size_t cpuflags = detect_cpu();
+
+#if defined(SCRYPT_SALSA64_AVX2)
+	if (cpuflags & cpu_avx2)
+		ret &= scrypt_test_mix_instance(scrypt_ChunkMix_avx2, salsa64_core_tangle_sse2, salsa64_core_tangle_sse2, expected);
+#endif
+
+#if defined(SCRYPT_SALSA64_XOP)
+	if (cpuflags & cpu_xop)
+		ret &= scrypt_test_mix_instance(scrypt_ChunkMix_xop, salsa64_core_tangle_sse2, salsa64_core_tangle_sse2, expected);
+#endif
 
 #if defined(SCRYPT_SALSA64_AVX)
 	if (cpuflags & cpu_avx)
