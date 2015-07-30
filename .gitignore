@@ -30,3 +30,8 @@
 
 # Debug files
 *.dSYM/
+
+# misc
+old
+notes
+secp256k1
