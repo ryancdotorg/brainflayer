@@ -34,7 +34,30 @@
 #define BH19(N) (N[4]<<24|N[0]>> 8)
 
 void bloom_set_hash160(unsigned char *, uint32_t *);
-inline unsigned int bloom_chk_hash160(unsigned char *, uint32_t *);
+inline unsigned int bloom_chk_hash160(unsigned char *bloom, uint32_t *h) {
+  unsigned int t;
+  t = BH00(h); if (BLOOM_GET_BIT(t) == 0) { return 0; }
+  t = BH01(h); if (BLOOM_GET_BIT(t) == 0) { return 0; }
+  t = BH02(h); if (BLOOM_GET_BIT(t) == 0) { return 0; }
+  t = BH03(h); if (BLOOM_GET_BIT(t) == 0) { return 0; }
+  t = BH04(h); if (BLOOM_GET_BIT(t) == 0) { return 0; }
+  t = BH05(h); if (BLOOM_GET_BIT(t) == 0) { return 0; }
+  t = BH06(h); if (BLOOM_GET_BIT(t) == 0) { return 0; }
+  t = BH07(h); if (BLOOM_GET_BIT(t) == 0) { return 0; }
+  t = BH08(h); if (BLOOM_GET_BIT(t) == 0) { return 0; }
+  t = BH09(h); if (BLOOM_GET_BIT(t) == 0) { return 0; }
+  t = BH10(h); if (BLOOM_GET_BIT(t) == 0) { return 0; }
+  t = BH11(h); if (BLOOM_GET_BIT(t) == 0) { return 0; }
+  t = BH12(h); if (BLOOM_GET_BIT(t) == 0) { return 0; }
+  t = BH13(h); if (BLOOM_GET_BIT(t) == 0) { return 0; }
+  t = BH14(h); if (BLOOM_GET_BIT(t) == 0) { return 0; }
+  t = BH15(h); if (BLOOM_GET_BIT(t) == 0) { return 0; }
+  t = BH16(h); if (BLOOM_GET_BIT(t) == 0) { return 0; }
+  t = BH17(h); if (BLOOM_GET_BIT(t) == 0) { return 0; }
+  t = BH18(h); if (BLOOM_GET_BIT(t) == 0) { return 0; }
+  t = BH19(h); if (BLOOM_GET_BIT(t) == 0) { return 0; }
+  return 1;
+}
 
 unsigned char * bloom_open(unsigned char *);
 
