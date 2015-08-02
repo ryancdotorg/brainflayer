@@ -1,7 +1,7 @@
 HEADERS = bloom.h
-OBJECTS = brainflayer.o hash160.o hash256.o bloom.o
+OBJECTS = brainflayer.o bloom.o hex2blf.o
 BINARIES = brainflayer hex2blf
-LIBS = -lssl
+LIBS = -lssl -lrt -lcrypto -lz -ldl -lsecp256k1 -lgmp
 CFLAGS = -O2
 COMPILE = gcc $(CFLAGS) -g -pedantic -std=gnu99 -Wall -Wextra -funsigned-char -Wno-pointer-sign -Wno-sign-compare
 
@@ -9,10 +9,10 @@ COMPILE = gcc $(CFLAGS) -g -pedantic -std=gnu99 -Wall -Wextra -funsigned-char -W
 	$(COMPILE) -c $< -o $@
 
 hex2blf: hex2blf.o bloom.o
-	$(COMPILE) hex2blf.o bloom.o -o hex2blf
+	$(COMPILE) -static $^ $(LIBS) -o hex2blf
 
-balezur: $(OBJECTS)
-	$(COMPILE) $(OBJECTS) $(LIBS) -o balezur
+brainflayer: brainflayer.o bloom.o
+	$(COMPILE) -static $^ $(LIBS) -o brainflayer
 
 all: $(BINARIES)
 
