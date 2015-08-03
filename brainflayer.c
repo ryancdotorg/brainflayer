@@ -19,7 +19,7 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 
-#include <secp256k1.h>
+#include "secp256k1/include/secp256k1.h"
 
 #include "bloom.h"
 #include "hash160.h"
