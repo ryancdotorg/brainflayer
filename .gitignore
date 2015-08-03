@@ -28,6 +28,9 @@
 *.x86_64
 *.hex
 
+brainflayer
+hex2blf
+
 # Debug files
 *.dSYM/
 
