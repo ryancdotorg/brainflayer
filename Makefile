@@ -6,6 +6,8 @@ CFLAGS = -O2
 COMPILE = gcc $(CFLAGS) -g -pedantic -std=gnu99 -Wall -Wextra -funsigned-char -Wno-pointer-sign -Wno-sign-compare
 
 secp256k1/.libs/libsecp256k1.a:
+	git submodule init
+	git submodule update
 	cd secp256k1; make distclean || true
 	cd secp256k1; ./autogen.sh
 	cd secp256k1; ./configure
