@@ -17,11 +17,13 @@
 
 int main(int argc, char **argv) {
   hash160_t hash;
+  int i;
+  double pct;
+  struct stat sb;
   unsigned char *bloom, *hashfile, *bloomfile;
   FILE *f, *b;
   size_t line_sz = 1024;
   char *line;
-  struct stat sb;
 
   if (argc != 3) {
     fprintf(stderr, "[!] Usage: %s hashfile.hex bloomfile.blf\n", argv[0]);
@@ -66,13 +68,14 @@ int main(int argc, char **argv) {
     memset(bloom, 0, BLOOM_SIZE);
   }
 
-
   if ((line = malloc(line_sz+1)) == NULL) {
     fprintf(stderr, "[!] malloc failed (line buffer)\n");
     exit(1);
   }
   
-  fprintf(stderr, "[*] Loading hash160s from '%s'... (this may take a few minutes)\n", hashfile);
+  i = 0;
+  stat(hashfile, &sb);
+  fprintf(stderr, "[*] Loading hash160s from '%s' \033[s  0.0%%", hashfile);
   while (getline(&line, &line_sz, f) > 0) {
     if (sscanf(line, "%08x%08x%08x%08x%08x", &hash.ul[0],
         &hash.ul[1], &hash.ul[2], &hash.ul[3], &hash.ul[4])) {
@@ -84,7 +87,14 @@ int main(int argc, char **argv) {
       hash.ul[4] = htonl(hash.ul[4]);
       bloom_set_hash160(bloom, hash.ul);
     }
+
+    if ((++i & 0x3ffff) == 0) {
+      pct = 100.0 * ftell(f) / sb.st_size;
+      fprintf(stderr, "\033[u%5.1f%%", pct);
+      fflush(stderr);
+    }
   }
+  fprintf(stderr, "\033[u 100.0%%\n");
 
   fprintf(stderr, "[*] Writing bloom filter to '%s'...\n", bloomfile);
   if ((fwrite(bloom, BLOOM_SIZE, 1, b)) != 1) {
