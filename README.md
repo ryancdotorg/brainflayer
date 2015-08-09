@@ -3,6 +3,7 @@ Brainflayer
 
 Brainflayer is a Proof-of-Concept brainwallet cracking tool that uses
 libsecp256k1 for pubkey generation.
+More information on the program itself, as well as its workings and security information, presented at Defcon 23 is available at: https://rya.nc/cracking_cryptocurrency_brainwallets.pdf
 
 Disclaimer
 ----------
