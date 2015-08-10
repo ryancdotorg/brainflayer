@@ -1,3 +1,4 @@
+/*  Copyright (c) 2015 Ryan Castellucci, All Rights Reserved */
 #ifndef __BRAINFLAYER_HASH160_H_
 #define __BRAINFLAYER_HASH160_H_
 

@@ -1,3 +1,4 @@
+/*  Copyright (c) 2015 Ryan Castellucci, All Rights Reserved */
 #include <unistd.h>
 #include <assert.h>
 #include <stdlib.h>

@@ -1,3 +1,4 @@
+/* Copyright (c) 2015 Ryan Castellucci, All Rights Reserved */
 #include <unistd.h>
 #include <string.h>
 #include <fcntl.h>
