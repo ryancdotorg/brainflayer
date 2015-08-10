@@ -13,6 +13,10 @@ secp256k1/.libs/libsecp256k1.a:
 	cd secp256k1; ./configure
 	cd secp256k1; make
 
+secp256k1/include/secp256k1.h: secp256k1/.libs/libsecp256k1.a
+
+brainflayer.o: brainflayer.c secp256k1/include/secp256k1.h
+
 %.o: %.c
 	$(COMPILE) -c $< -o $@
 
