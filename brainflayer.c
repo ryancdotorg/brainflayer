@@ -25,6 +25,8 @@
 #include "bloom.h"
 #include "hash160.h"
 
+#include "warpwallet.h"
+
 static int brainflayer_is_init = 0;
 
 static const unsigned char unhex_tab[80] = {
@@ -167,6 +169,23 @@ static int hexpriv2hash160(unsigned char *hpriv, size_t hpriv_sz) {
   return priv2hash160(unhex(hpriv, hpriv_sz));
 }
 
+static unsigned char *warpsalt;
+static size_t warpsalt_sz;
+static int warppass2hash160(unsigned char *pass, size_t pass_sz) {
+  int ret;
+  if ((ret = warpwallet(pass, pass_sz, warpsalt, warpsalt_sz, hash256)) != 0) return ret;
+  return priv2hash160(hash256);
+}
+
+static unsigned char *warppass;
+static size_t warppass_sz;
+static int warpsalt2hash160(unsigned char *salt, size_t salt_sz) {
+  int ret;
+  if ((ret = warpwallet(warppass, warppass_sz, salt, salt_sz, hash256)) != 0) return ret;
+  return priv2hash160(hash256);
+}
+
+// function pointer
 static int (*input2hash160)(unsigned char *, size_t);
 
 void usage(unsigned char *name) {
@@ -175,10 +194,14 @@ void usage(unsigned char *name) {
  -b FILE                     check for matches against bloom filter FILE\n\
  -i FILE                     read from FILE instead of stdin\n\
  -o FILE                     write to FILE instead of stdout\n\
- -t TYPE                     input values are TYPE - supported types:\n\
+ -t TYPE                     inputs are TYPE - supported types:\n\
                              str (default) - classic brainwallet passphrases\n\
                              hex - classic brainwallets (hex encoded)\n\
                              priv - hex encoded private keys\n\
+                             warp - WarpWallet (supports -s or -p)\n\
+ -s SALT                     use SALT for salted input types (default: none)\n\
+ -p PASSPHRASE               use PASSPHRASE for salted input types, inputs\n\
+                             will be treated as salts\n\
  -h                          show this help\n", name);
 //q, --quiet                 suppress non-error messages
   exit(1);
@@ -247,6 +270,23 @@ int main(int argc, char **argv) {
       input2hash160 = &hexpass2hash160;
     } else if (strcmp(topt, "priv") == 0) {
       input2hash160 = &hexpriv2hash160;
+    } else if (strcmp(topt, "warp") == 0) {
+      spok = 1;
+      if (popt) {
+        warppass = popt;
+        warppass_sz = strlen(popt);
+        input2hash160 = &warpsalt2hash160;
+      } else {
+        if (sopt) {
+          warpsalt = sopt;
+          warpsalt_sz = strlen(warpsalt);
+        } else {
+          warpsalt = malloc(0);
+          warpsalt_sz = 0;
+        }
+        fprintf(stderr, "Warp: '%s' (%d) @%p\n", warpsalt, warpsalt_sz, warpsalt);
+        input2hash160 = &warppass2hash160;
+      }
     } else {
       bail(1, "Unknown input type '%s'.\n", topt);
     }
