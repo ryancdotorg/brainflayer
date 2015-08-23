@@ -174,6 +174,7 @@ static size_t warpsalt_sz;
 static int warppass2hash160(unsigned char *pass, size_t pass_sz) {
   int ret;
   if ((ret = warpwallet(pass, pass_sz, warpsalt, warpsalt_sz, hash256)) != 0) return ret;
+  pass[pass_sz] = 0;
   return priv2hash160(hash256);
 }
 
@@ -182,6 +183,7 @@ static size_t warppass_sz;
 static int warpsalt2hash160(unsigned char *salt, size_t salt_sz) {
   int ret;
   if ((ret = warpwallet(warppass, warppass_sz, salt, salt_sz, hash256)) != 0) return ret;
+  salt[salt_sz] = 0;
   return priv2hash160(hash256);
 }
 
