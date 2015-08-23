@@ -284,7 +284,6 @@ int main(int argc, char **argv) {
           warpsalt = malloc(0);
           warpsalt_sz = 0;
         }
-        fprintf(stderr, "Warp: '%s' (%d) @%p\n", warpsalt, warpsalt_sz, warpsalt);
         input2hash160 = &warppass2hash160;
       }
     } else {
