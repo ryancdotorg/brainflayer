@@ -25,16 +25,37 @@
 #include "bloom.h"
 #include "hash160.h"
 
+static int brainflayer_is_init = 0;
+
+static const unsigned char unhex_tab[80] = {
+  0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0xaa, 0xbb, 0xcc, 0xdd, 0xee,
+  0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
+
 static unsigned char hash256[SHA256_DIGEST_LENGTH];
 static hash160_t hash160_tmp;
 static hash160_t hash160_compr;
 static hash160_t hash160_uncmp;
 static unsigned char *mem;
 
-static unsigned char *bloom;
+static unsigned char *bloom = NULL;
+
+static unsigned char unhexed[4096];
 
 static SHA256_CTX    *sha256_ctx;
 static RIPEMD160_CTX *ripemd160_ctx;
+
+#define bail(code, ...) \
+do { \
+  fprintf(stderr, __VA_ARGS__); \
+  exit(code); \
+} while (0)
 
 uint64_t time_1, time_2;
 int64_t time_delta;
@@ -48,10 +69,18 @@ uint64_t getns() {
   return ns;
 }
 
-int pass2hash160(unsigned char *pass, size_t pass_sz) {
+inline static unsigned char * unhex(unsigned char *str, size_t str_sz) {
+  int i;
+  for (i = 0; i < str_sz; i += 2) {
+    unhexed[i>>1] = (unhex_tab[str[i+0]&0x4f] & 0xf0)|
+                    (unhex_tab[str[i+1]&0x4f] & 0x0f);
+  }
+  return unhexed;
+}
+
+inline static int priv2hash160(unsigned char *priv) {
   /* only initialize stuff once */
-  static int bwc_is_init = 0;
-  if (!bwc_is_init) {
+  if (!brainflayer_is_init) {
     /* initialize buffers */
     mem = malloc(4096);
 
@@ -60,17 +89,13 @@ int pass2hash160(unsigned char *pass, size_t pass_sz) {
     ripemd160_ctx = malloc(sizeof(*ripemd160_ctx));
 
     /* set the flag */
-    bwc_is_init = 1;
+    brainflayer_is_init = 1;
   }
 
   unsigned char *pub_chr = mem;
   int pub_chr_sz;
 
-  SHA256_Init(sha256_ctx);
-  SHA256_Update(sha256_ctx, pass, pass_sz);
-  SHA256_Final(hash256, sha256_ctx);
-
-  secp256k1_ecdsa_pubkey_create(pub_chr, &pub_chr_sz, hash256, 0);
+  secp256k1_ecdsa_pubkey_create(pub_chr, &pub_chr_sz, priv, 0);
 
 #if 0
   i = 0;
@@ -80,60 +105,196 @@ int pass2hash160(unsigned char *pass, size_t pass_sz) {
   printf("\n");
 #endif
 
-  /* yo dawg, i heard you like hashes... */
+  /* compute hash160 for uncompressed public key */
+  /* sha256(pub) */
   SHA256_Init(sha256_ctx);
   SHA256_Update(sha256_ctx, pub_chr, pub_chr_sz);
   SHA256_Final(hash256, sha256_ctx);
-
-  /* ...so i put a hash in your hash */
+  /* ripemd160(sha256(pub)) */
   RIPEMD160_Init(ripemd160_ctx);
   RIPEMD160_Update(ripemd160_ctx, hash256, SHA256_DIGEST_LENGTH);
   RIPEMD160_Final(hash160_tmp.uc, ripemd160_ctx);
+
+  /* save result to global struct */
   memcpy(hash160_uncmp.uc, hash160_tmp.uc, 20);
 
-  /* ugly key compression hack */
+  /* quick and dirty public key compression */
   pub_chr[0] = 0x02 | (pub_chr[64] & 0x01);
 
-  /* yo dawg, i heard you like hashes... */
+  /* compute hash160 for compressed public key */
+  /* sha256(pub) */
   SHA256_Init(sha256_ctx);
   SHA256_Update(sha256_ctx, pub_chr, 33);
   SHA256_Final(hash256, sha256_ctx);
-
-  /* ...so i put a hash in your hash */
+  /* ripemd160(sha256(pub)) */
   RIPEMD160_Init(ripemd160_ctx);
   RIPEMD160_Update(ripemd160_ctx, hash256, SHA256_DIGEST_LENGTH);
   RIPEMD160_Final(hash160_tmp.uc, ripemd160_ctx);
+
+  /* save result to global struct */
   memcpy(hash160_compr.uc, hash160_tmp.uc, 20);
 
   return 0;
 }
 
+static int pass2hash160(unsigned char *pass, size_t pass_sz) {
+  /* only initialize stuff once */
+  if (!brainflayer_is_init) {
+    /* initialize buffers */
+    mem = malloc(4096);
+
+    /* initialize hashs */
+    sha256_ctx    = malloc(sizeof(*sha256_ctx));
+    ripemd160_ctx = malloc(sizeof(*ripemd160_ctx));
+
+    /* set the flag */
+    brainflayer_is_init = 1;
+  }
+
+  /* privkey = sha256(passphrase) */
+  SHA256_Init(sha256_ctx);
+  SHA256_Update(sha256_ctx, pass, pass_sz);
+  SHA256_Final(hash256, sha256_ctx);
+
+  return priv2hash160(hash256);
+}
+
+static int hexpass2hash160(unsigned char *hpass, size_t hpass_sz) {
+  return pass2hash160(unhex(hpass, hpass_sz), hpass_sz>>1);
+}
+
+static int hexpriv2hash160(unsigned char *hpriv, size_t hpriv_sz) {
+  return priv2hash160(unhex(hpriv, hpriv_sz));
+}
+
+static int (*input2hash160)(unsigned char *, size_t);
+
+void usage(unsigned char *name) {
+  printf("Usage: %s [OPTION]...\n\n\
+ -a                          open output file in append mode\n\
+ -b FILE                     check for matches against bloom filter FILE\n\
+ -i FILE                     read from FILE instead of stdin\n\
+ -o FILE                     write to FILE instead of stdout\n\
+ -t TYPE                     input values are TYPE - supported types:\n\
+                             str (default) - classic brainwallet passphrases\n\
+                             hex - classic brainwallets (hex encoded)\n\
+                             priv - hex encoded private keys\n\
+ -h                          show this help\n", name);
+//q, --quiet                 suppress non-error messages
+  exit(1);
+}
+
 int main(int argc, char **argv) {
+  FILE *ifile = stdin;
+  FILE *ofile = stdout;
+
   char *line = NULL;
   size_t line_sz = 0;
 
-  secp256k1_start();
+  int c, spok = 0, aopt = 0;
+  unsigned char *bopt = NULL, *iopt = NULL, *oopt = NULL;
+  unsigned char *topt = NULL, *sopt = NULL, *popt = NULL;
 
-  /* use line buffered output */
-  setvbuf(stdout, NULL, _IOLBF, 0);
-  setvbuf(stderr, NULL, _IONBF, 0);
-
-  if (argc == 2) {
-    if ((bloom = bloom_open(argv[1])) == NULL) {
-      fprintf(stderr, "failed to open bloom filter.\n");
-      exit(1);
+  while ((c = getopt(argc, argv, "ab:hi:o:p:s:t:")) != -1) {
+    switch (c) {
+      case 'a':
+        aopt = 1; // open output file in append mode
+        break;
+      case 'b':
+        bopt = optarg; // bloom filter file
+        break;
+      case 'i':
+        iopt = optarg; // input file
+        break;
+      case 'o':
+        oopt = optarg; // output file
+        break;
+      case 's':
+        sopt = optarg; // salt
+        break;
+      case 'p':
+        popt = optarg; // passphrase
+        break;
+      case 't':
+        topt = optarg; // type of input
+        break;
+      case 'h':
+        // show help
+        usage(argv[0]);
+        return 0;
+      case '?':
+        // show error
+        return 1;
+      default:
+        // should never be reached...
+        printf("got option '%c' (%d)\n", c, c);
+        return 1;
     }
-  } else if (argc > 2) {
-    fprintf(stderr, "too many arguments\n");
+  }
+
+  if (optind < argc) {
+    fprintf(stderr, "Invalid arguments:\n");
+    while (optind < argc) {
+      fprintf(stderr, "    '%s'\n", argv[optind++]);
+    }
     exit(1);
   }
 
-  while (getline(&line, &line_sz, stdin) > 0) {
+  if (topt != NULL) {
+    if (strcmp(topt, "str") == 0) {
+      input2hash160 = &pass2hash160;
+    } else if (strcmp(topt, "hex") == 0) {
+      input2hash160 = &hexpass2hash160;
+    } else if (strcmp(topt, "priv") == 0) {
+      input2hash160 = &hexpriv2hash160;
+    } else {
+      bail(1, "Unknown input type '%s'.\n", topt);
+    }
+  } else {
+    topt = "str";
+    input2hash160 = &pass2hash160;
+  }
+
+  if (popt && !spok) {
+    bail(1, "Specifying a passphrase not supported with input type '%s'\n", topt);
+  }
+  if (sopt && !spok) {
+    bail(1, "Specifying a salt not supported with this input type '%s'\n", topt);
+  }
+  if (sopt && popt) {
+    bail(1, "Cannot specify both a salt and a passphrase\n");
+  }
+
+  if (bopt) {
+    if ((bloom = bloom_open(bopt)) == NULL) {
+      bail(1, "failed to open bloom filter.\n");
+    }
+  }
+
+  if (iopt) {
+    if ((ifile = fopen(iopt, "r")) == NULL) {
+      bail(1, "failed to open '%s' for reading: %s\n", iopt, strerror(errno));
+    }
+  }
+
+  if (oopt) {
+    if ((ofile = fopen(oopt, (aopt ? "a" : "w"))) == NULL) {
+      bail(1, "failed to open '%s' for writing: %s\n", oopt, strerror(errno));
+    }
+  }
+
+  /* use line buffered output */
+  setvbuf(ofile,  NULL, _IOLBF, 0);
+  setvbuf(stderr, NULL, _IONBF, 0);
+
+  secp256k1_start();
+
+  while (getline(&line, &line_sz, ifile) > 0) {
     line[strlen(line)-1] = 0;
-    pass2hash160(line, strlen(line));
-    if (argc == 2) {
+    input2hash160(line, strlen(line));
+    if (bloom) {
       if (bloom_chk_hash160(bloom, hash160_uncmp.ul)) {
-        fprintf(stdout, "matched: %08x%08x%08x%08x%08x:u:%s\n",
+        fprintf(ofile, "matched: %08x%08x%08x%08x%08x:u:%s\n",
                 ntohl(hash160_uncmp.ul[0]),
                 ntohl(hash160_uncmp.ul[1]),
                 ntohl(hash160_uncmp.ul[2]),
@@ -142,7 +303,7 @@ int main(int argc, char **argv) {
                 line);
       }
       if (bloom_chk_hash160(bloom, hash160_compr.ul)) {
-        fprintf(stdout, "matched: %08x%08x%08x%08x%08x:c:%s\n",
+        fprintf(ofile, "matched: %08x%08x%08x%08x%08x:c:%s\n",
                 ntohl(hash160_compr.ul[0]),
                 ntohl(hash160_compr.ul[1]),
                 ntohl(hash160_compr.ul[2]),
@@ -151,14 +312,14 @@ int main(int argc, char **argv) {
                 line);
       }
     } else {
-      fprintf(stdout, "%08x%08x%08x%08x%08x:u:%s\n",
+      fprintf(ofile, "%08x%08x%08x%08x%08x:u:%s\n",
               ntohl(hash160_uncmp.ul[0]),
               ntohl(hash160_uncmp.ul[1]),
               ntohl(hash160_uncmp.ul[2]),
               ntohl(hash160_uncmp.ul[3]),
               ntohl(hash160_uncmp.ul[4]),
               line);
-      fprintf(stdout, "%08x%08x%08x%08x%08x:c:%s\n",
+      fprintf(ofile, "%08x%08x%08x%08x%08x:c:%s\n",
               ntohl(hash160_compr.ul[0]),
               ntohl(hash160_compr.ul[1]),
               ntohl(hash160_compr.ul[2]),
