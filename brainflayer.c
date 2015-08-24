@@ -274,11 +274,17 @@ int main(int argc, char **argv) {
   }
 
   if (optind < argc) {
-    fprintf(stderr, "Invalid arguments:\n");
-    while (optind < argc) {
-      fprintf(stderr, "    '%s'\n", argv[optind++]);
+    if (optind == 1 && argc == 2) {
+      // older versions of brainflayer had the bloom filter file as a
+      // single optional argument, this keeps compatibility with that
+      bopt = argv[1];
+    } else {
+      fprintf(stderr, "Invalid arguments:\n");
+      while (optind < argc) {
+        fprintf(stderr, "    '%s'\n", argv[optind++]);
+      }
+      exit(1);
     }
-    exit(1);
   }
 
   if (topt != NULL) {
