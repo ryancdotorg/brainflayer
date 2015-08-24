@@ -190,6 +190,22 @@ static int warpsalt2hash160(unsigned char *salt, size_t salt_sz) {
 // function pointer
 static int (*input2hash160)(unsigned char *, size_t);
 
+inline static void fprintresult(FILE *f, hash160_t *hash,
+                                unsigned char compressed,
+                                unsigned char *type,
+                                unsigned char *input) {
+  fprintf(f, "%08x%08x%08x%08x%08x:%s:%c:%s\n",
+          ntohl(hash->ul[0]),
+          ntohl(hash->ul[1]),
+          ntohl(hash->ul[2]),
+          ntohl(hash->ul[3]),
+          ntohl(hash->ul[4]),
+          type,
+          compressed,
+          input);
+}
+
+
 void usage(unsigned char *name) {
   printf("Usage: %s [OPTION]...\n\n\
  -a                          open output file in append mode\n\
@@ -335,38 +351,14 @@ int main(int argc, char **argv) {
     input2hash160(line, strlen(line));
     if (bloom) {
       if (bloom_chk_hash160(bloom, hash160_uncmp.ul)) {
-        fprintf(ofile, "matched: %08x%08x%08x%08x%08x:u:%s\n",
-                ntohl(hash160_uncmp.ul[0]),
-                ntohl(hash160_uncmp.ul[1]),
-                ntohl(hash160_uncmp.ul[2]),
-                ntohl(hash160_uncmp.ul[3]),
-                ntohl(hash160_uncmp.ul[4]),
-                line);
+        fprintresult(ofile, &hash160_uncmp, 'u', topt, line);
       }
       if (bloom_chk_hash160(bloom, hash160_compr.ul)) {
-        fprintf(ofile, "matched: %08x%08x%08x%08x%08x:c:%s\n",
-                ntohl(hash160_compr.ul[0]),
-                ntohl(hash160_compr.ul[1]),
-                ntohl(hash160_compr.ul[2]),
-                ntohl(hash160_compr.ul[3]),
-                ntohl(hash160_compr.ul[4]),
-                line);
+        fprintresult(ofile, &hash160_compr, 'c', topt, line);
       }
     } else {
-      fprintf(ofile, "%08x%08x%08x%08x%08x:u:%s\n",
-              ntohl(hash160_uncmp.ul[0]),
-              ntohl(hash160_uncmp.ul[1]),
-              ntohl(hash160_uncmp.ul[2]),
-              ntohl(hash160_uncmp.ul[3]),
-              ntohl(hash160_uncmp.ul[4]),
-              line);
-      fprintf(ofile, "%08x%08x%08x%08x%08x:c:%s\n",
-              ntohl(hash160_compr.ul[0]),
-              ntohl(hash160_compr.ul[1]),
-              ntohl(hash160_compr.ul[2]),
-              ntohl(hash160_compr.ul[3]),
-              ntohl(hash160_compr.ul[4]),
-              line);
+      fprintresult(ofile, &hash160_uncmp, 'u', topt, line);
+      fprintresult(ofile, &hash160_compr, 'c', topt, line);
     }
   }
 
