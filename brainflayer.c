@@ -194,14 +194,14 @@ inline static void fprintresult(FILE *f, hash160_t *hash,
                                 unsigned char compressed,
                                 unsigned char *type,
                                 unsigned char *input) {
-  fprintf(f, "%08x%08x%08x%08x%08x:%s:%c:%s\n",
+  fprintf(f, "%08x%08x%08x%08x%08x:%c:%s:%s\n",
           ntohl(hash->ul[0]),
           ntohl(hash->ul[1]),
           ntohl(hash->ul[2]),
           ntohl(hash->ul[3]),
           ntohl(hash->ul[4]),
-          type,
           compressed,
+          type,
           input);
 }
 
