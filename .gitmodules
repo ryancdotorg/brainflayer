@@ -1,6 +1,6 @@
 [submodule "secp256k1"]
     path = secp256k1 
     url = https://github.com/bitcoin/secp256k1.git
-[submodule "libscrypt"]
-	path = libscrypt
-	url = https://github.com/technion/libscrypt.git
+[submodule "scrypt-jane"]
+	path = scrypt-jane
+	url = https://github.com/ryancdotorg/scrypt-jane.git

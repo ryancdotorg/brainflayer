@@ -15,12 +15,12 @@ secp256k1/.libs/libsecp256k1.a:
 
 secp256k1/include/secp256k1.h: secp256k1/.libs/libsecp256k1.a
 
-libscrypt/libscrypt.a:
+scrypt-jane/scrypt-jane.h:
 	git submodule init
 	git submodule update
-	cd libscrypt; make
 
-libscrypt/libscrypt.a: libscrypt/libscrypt.h
+scrypt-jane/scrypt-jane.o: scrypt-jane/scrypt-jane.c scrypt-jane/scrypt-jane.h
+	cd scrypt-jane; gcc -O3 -DSCRYPT_SALSA -DSCRYPT_SHA256 -c scrypt-jane.c -o scrypt-jane.o
 
 brainflayer.o: brainflayer.c secp256k1/include/secp256k1.h
 
@@ -30,9 +30,11 @@ brainflayer.o: brainflayer.c secp256k1/include/secp256k1.h
 hex2blf: hex2blf.o bloom.o
 	$(COMPILE) -static $^ $(LIBS) -o $@
 
-brainflayer: brainflayer.o bloom.o warpwallet.o secp256k1/.libs/libsecp256k1.a
+brainflayer: brainflayer.o bloom.o warpwallet.o secp256k1/.libs/libsecp256k1.a scrypt-jane/scrypt-jane.o
 	$(COMPILE) -static $^ $(LIBS) -o $@
 
+brainflayer-alt: brainflayer.o bloom.o warpwallet.o secp256k1/.libs/libsecp256k1.a scrypt-jane/scrypt-jane.o
+	$(COMPILE) -static $^ $(LIBS) -o $@
 
 all: $(BINARIES)
 
