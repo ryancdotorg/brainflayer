@@ -25,8 +25,10 @@
 #define openssl_pbkdf2(p, pl, s, ss, k, ks) \
     PKCS5_PBKDF2_HMAC(p, pl, s, ss, _PBKDF2_i, EVP_sha256(), ks, k)
 
-//#define libscrypt(p, pl, s, ss, k, ks) \
-//    libscrypt_scrypt(p, pl, s, ss, _SCRYPT_N, _SCRYPT_r, _SCRYPT_p, k, ks)
+/*
+#define libscrypt(p, pl, s, ss, k, ks) \
+    libscrypt_scrypt(p, pl, s, ss, _SCRYPT_N, _SCRYPT_r, _SCRYPT_p, k, ks)
+*/
 
 #define jane_scrypt(p, pl, s, ss, k, ks) \
     scrypt(p, pl, s, ss, 17, 3, 0, k, ks)
