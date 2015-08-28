@@ -19,7 +19,7 @@ scrypt-jane/scrypt-jane.h:
 	git submodule init
 	git submodule update
 
-scrypt-jane/scrypt-jane.o: scrypt-jane/scrypt-jane.c scrypt-jane/scrypt-jane.h
+scrypt-jane/scrypt-jane.o: scrypt-jane/scrypt-jane.h scrypt-jane/scrypt-jane.c
 	cd scrypt-jane; gcc -O3 -DSCRYPT_SALSA -DSCRYPT_SHA256 -c scrypt-jane.c -o scrypt-jane.o
 
 brainflayer.o: brainflayer.c secp256k1/include/secp256k1.h
