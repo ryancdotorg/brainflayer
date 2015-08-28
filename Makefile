@@ -1,9 +1,11 @@
 HEADERS = bloom.h crack.h hash160.h warpwallet.h
-OBJECTS = brainflayer.o bloom.o hex2blf.o
+OBJECTS = brainflayer.o bloom.o hex2blf.o warpwallet.o
 BINARIES = brainflayer hex2blf
 LIBS = -lssl -lrt -lcrypto -lz -ldl -lgmp
 CFLAGS = -O2
 COMPILE = gcc $(CFLAGS) -g -pedantic -std=gnu99 -Wall -Wextra -funsigned-char -Wno-pointer-sign -Wno-sign-compare
+
+all: $(BINARIES)
 
 secp256k1/.libs/libsecp256k1.a:
 	git submodule init
@@ -37,8 +39,6 @@ brainflayer: brainflayer.o bloom.o warpwallet.o secp256k1/.libs/libsecp256k1.a s
 
 brainflayer-alt: brainflayer.o bloom.o warpwallet.o secp256k1/.libs/libsecp256k1.a scrypt-jane/scrypt-jane.o
 	$(COMPILE) -static $^ $(LIBS) -o $@
-
-all: $(BINARIES)
 
 clean:
 	rm -f $(BINARIES) $(OBJECTS)
