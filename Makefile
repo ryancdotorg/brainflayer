@@ -24,6 +24,8 @@ scrypt-jane/scrypt-jane.o: scrypt-jane/scrypt-jane.h scrypt-jane/scrypt-jane.c
 
 brainflayer.o: brainflayer.c secp256k1/include/secp256k1.h
 
+warpwallet.o: warpwallet.c scrypt-jane/scrypt-jane.h
+
 %.o: %.c
 	$(COMPILE) -c $< -o $@
 
