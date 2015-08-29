@@ -30,6 +30,7 @@
 
 brainflayer
 hex2blf
+blfchk
 
 # Debug files
 *.dSYM/
