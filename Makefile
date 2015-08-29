@@ -28,6 +28,8 @@ brainflayer.o: brainflayer.c secp256k1/include/secp256k1.h
 
 warpwallet.o: warpwallet.c scrypt-jane/scrypt-jane.h
 
+brainwalletio.o: brainwalletio.c scrypt-jane/scrypt-jane.h
+
 %.o: %.c
 	$(COMPILE) -c $< -o $@
 
@@ -37,7 +39,7 @@ blfchk: blfchk.o hex.o bloom.o
 hex2blf: hex2blf.o hex.o bloom.o
 	$(COMPILE) -static $^ $(LIBS) -o $@
 
-brainflayer: brainflayer.o hex.o bloom.o warpwallet.o secp256k1/.libs/libsecp256k1.a scrypt-jane/scrypt-jane.o
+brainflayer: brainflayer.o hex.o bloom.o warpwallet.o brainwalletio.o secp256k1/.libs/libsecp256k1.a scrypt-jane/scrypt-jane.o
 	$(COMPILE) -static $^ $(LIBS) -o $@
 
 brainflayer-alt: brainflayer.o hex.o bloom.o warpwallet.o brainwalletio.o secp256k1/.libs/libsecp256k1.a scrypt-jane/scrypt-jane.o

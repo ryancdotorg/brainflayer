@@ -27,6 +27,7 @@
 #include "hash160.h"
 
 #include "warpwallet.h"
+#include "brainwalletio.h"
 
 static int brainflayer_is_init = 0;
 
@@ -150,20 +151,36 @@ static int hexpriv2hash160(unsigned char *hpriv, size_t hpriv_sz) {
   return priv2hash160(unhex(hpriv, hpriv_sz, unhexed, sizeof(unhexed)));
 }
 
-static unsigned char *warpsalt;
-static size_t warpsalt_sz;
+static unsigned char *kdfsalt;
+static size_t kdfsalt_sz;
+
 static int warppass2hash160(unsigned char *pass, size_t pass_sz) {
   int ret;
-  if ((ret = warpwallet(pass, pass_sz, warpsalt, warpsalt_sz, hash256)) != 0) return ret;
+  if ((ret = warpwallet(pass, pass_sz, kdfsalt, kdfsalt_sz, hash256)) != 0) return ret;
   pass[pass_sz] = 0;
   return priv2hash160(hash256);
 }
 
-static unsigned char *warppass;
-static size_t warppass_sz;
+static int bwiopass2hash160(unsigned char *pass, size_t pass_sz) {
+  int ret;
+  if ((ret = brainwalletio(pass, pass_sz, kdfsalt, kdfsalt_sz, hash256)) != 0) return ret;
+  pass[pass_sz] = 0;
+  return priv2hash160(hash256);
+}
+
+static unsigned char *kdfpass;
+static size_t kdfpass_sz;
+
 static int warpsalt2hash160(unsigned char *salt, size_t salt_sz) {
   int ret;
-  if ((ret = warpwallet(warppass, warppass_sz, salt, salt_sz, hash256)) != 0) return ret;
+  if ((ret = warpwallet(kdfpass, kdfpass_sz, salt, salt_sz, hash256)) != 0) return ret;
+  salt[salt_sz] = 0;
+  return priv2hash160(hash256);
+}
+
+static int bwiosalt2hash160(unsigned char *salt, size_t salt_sz) {
+  int ret;
+  if ((ret = brainwalletio(kdfpass, kdfpass_sz, salt, salt_sz, hash256)) != 0) return ret;
   salt[salt_sz] = 0;
   return priv2hash160(hash256);
 }
@@ -277,20 +294,10 @@ int main(int argc, char **argv) {
       input2hash160 = &hexpriv2hash160;
     } else if (strcmp(topt, "warp") == 0) {
       spok = 1;
-      if (popt) {
-        warppass = popt;
-        warppass_sz = strlen(popt);
-        input2hash160 = &warpsalt2hash160;
-      } else {
-        if (sopt) {
-          warpsalt = sopt;
-          warpsalt_sz = strlen(warpsalt);
-        } else {
-          warpsalt = malloc(0);
-          warpsalt_sz = 0;
-        }
-        input2hash160 = &warppass2hash160;
-      }
+      input2hash160 = popt ? &warpsalt2hash160 : &warppass2hash160;
+    } else if (strcmp(topt, "bwio") == 0) {
+      spok = 1;
+      input2hash160 = popt ? &bwiosalt2hash160 : &bwiopass2hash160;
     } else {
       bail(1, "Unknown input type '%s'.\n", topt);
     }
@@ -299,14 +306,28 @@ int main(int argc, char **argv) {
     input2hash160 = &pass2hash160;
   }
 
-  if (popt && !spok) {
-    bail(1, "Specifying a passphrase not supported with input type '%s'\n", topt);
-  }
-  if (sopt && !spok) {
-    bail(1, "Specifying a salt not supported with this input type '%s'\n", topt);
-  }
-  if (sopt && popt) {
-    bail(1, "Cannot specify both a salt and a passphrase\n");
+  if (spok) {
+    if (sopt && popt) {
+      bail(1, "Cannot specify both a salt and a passphrase\n");
+    }
+    if (popt) {
+      kdfpass = popt;
+      kdfpass_sz = strlen(popt);
+    } else {
+      if (sopt) {
+        kdfsalt = sopt;
+        kdfsalt_sz = strlen(kdfsalt);
+      } else {
+        kdfsalt = malloc(0);
+        kdfsalt_sz = 0;
+      }
+    }
+  } else {
+    if (popt) {
+      bail(1, "Specifying a passphrase not supported with input type '%s'\n", topt);
+    } else if (sopt) {
+      bail(1, "Specifying a salt not supported with this input type '%s'\n", topt);
+    }
   }
 
   if (bopt) {
