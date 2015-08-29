@@ -1,6 +1,6 @@
 HEADERS = bloom.h crack.h hash160.h warpwallet.h
 OBJECTS = brainflayer.o bloom.o hex2blf.o warpwallet.o hex.o
-BINARIES = brainflayer hex2blf
+BINARIES = brainflayer hex2blf blfchk
 LIBS = -lssl -lrt -lcrypto -lz -ldl -lgmp
 CFLAGS = -O2
 COMPILE = gcc $(CFLAGS) -g -pedantic -std=gnu99 -Wall -Wextra -funsigned-char -Wno-pointer-sign -Wno-sign-compare
@@ -30,6 +30,9 @@ warpwallet.o: warpwallet.c scrypt-jane/scrypt-jane.h
 
 %.o: %.c
 	$(COMPILE) -c $< -o $@
+
+blfchk: blfchk.o hex.o bloom.o
+	$(COMPILE) -static $^ $(LIBS) -o $@
 
 hex2blf: hex2blf.o hex.o bloom.o
 	$(COMPILE) -static $^ $(LIBS) -o $@
