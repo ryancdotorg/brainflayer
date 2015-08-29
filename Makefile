@@ -2,8 +2,8 @@ HEADERS = bloom.h crack.h hash160.h warpwallet.h
 OBJECTS = brainflayer.o bloom.o hex2blf.o warpwallet.o hex.o
 BINARIES = brainflayer hex2blf blfchk
 LIBS = -lssl -lrt -lcrypto -lz -ldl -lgmp
-CFLAGS = -O2
-COMPILE = gcc $(CFLAGS) -g -pedantic -std=gnu99 -Wall -Wextra -funsigned-char -Wno-pointer-sign -Wno-sign-compare
+CFLAGS = -O3 -flto -pedantic -std=gnu99 -Wall -Wextra -funsigned-char -Wno-pointer-sign -Wno-sign-compare
+COMPILE = gcc $(CFLAGS)
 
 all: $(BINARIES)
 
