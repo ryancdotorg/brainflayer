@@ -1,5 +1,5 @@
 HEADERS = bloom.h crack.h hash160.h warpwallet.h
-OBJECTS = brainflayer.o bloom.o hex2blf.o warpwallet.o
+OBJECTS = brainflayer.o bloom.o hex2blf.o warpwallet.o hex.o
 BINARIES = brainflayer hex2blf
 LIBS = -lssl -lrt -lcrypto -lz -ldl -lgmp
 CFLAGS = -O2
@@ -31,13 +31,13 @@ warpwallet.o: warpwallet.c scrypt-jane/scrypt-jane.h
 %.o: %.c
 	$(COMPILE) -c $< -o $@
 
-hex2blf: hex2blf.o bloom.o
+hex2blf: hex2blf.o hex.o bloom.o
 	$(COMPILE) -static $^ $(LIBS) -o $@
 
-brainflayer: brainflayer.o bloom.o warpwallet.o secp256k1/.libs/libsecp256k1.a scrypt-jane/scrypt-jane.o
+brainflayer: brainflayer.o hex.o bloom.o warpwallet.o secp256k1/.libs/libsecp256k1.a scrypt-jane/scrypt-jane.o
 	$(COMPILE) -static $^ $(LIBS) -o $@
 
-brainflayer-alt: brainflayer.o bloom.o warpwallet.o secp256k1/.libs/libsecp256k1.a scrypt-jane/scrypt-jane.o
+brainflayer-alt: brainflayer.o hex.o bloom.o warpwallet.o brainwalletio.o secp256k1/.libs/libsecp256k1.a scrypt-jane/scrypt-jane.o
 	$(COMPILE) -static $^ $(LIBS) -o $@
 
 clean:

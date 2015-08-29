@@ -13,6 +13,7 @@
 
 #include <arpa/inet.h> /*  for ntohl/htonl */
 
+#include "hex.h"
 #include "bloom.h"
 #include "hash160.h"
 
@@ -78,16 +79,8 @@ int main(int argc, char **argv) {
   stat(hashfile, &sb);
   fprintf(stderr, "[*] Loading hash160s from '%s' \033[s  0.0%%", hashfile);
   while (getline(&line, &line_sz, f) > 0) {
-    if (sscanf(line, "%08x%08x%08x%08x%08x", &hash.ul[0],
-        &hash.ul[1], &hash.ul[2], &hash.ul[3], &hash.ul[4])) {
-      /* fix the byte order */
-      hash.ul[0] = htonl(hash.ul[0]);
-      hash.ul[1] = htonl(hash.ul[1]);
-      hash.ul[2] = htonl(hash.ul[2]);
-      hash.ul[3] = htonl(hash.ul[3]);
-      hash.ul[4] = htonl(hash.ul[4]);
-      bloom_set_hash160(bloom, hash.ul);
-    }
+    unhex(line, strlen(line), hash.uc, sizeof(hash.uc));
+    bloom_set_hash160(bloom, hash.ul);
 
     if ((++i & 0x3ffff) == 0) {
       pct = 100.0 * ftell(f) / sb.st_size;

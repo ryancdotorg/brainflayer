@@ -22,23 +22,13 @@
 
 #include "secp256k1/include/secp256k1.h"
 
+#include "hex.h"
 #include "bloom.h"
 #include "hash160.h"
 
 #include "warpwallet.h"
 
 static int brainflayer_is_init = 0;
-
-static const unsigned char unhex_tab[80] = {
-  0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99,
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00, 0x00, 0xaa, 0xbb, 0xcc, 0xdd, 0xee,
-  0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-};
 
 static unsigned char hash256[SHA256_DIGEST_LENGTH];
 static hash160_t hash160_tmp;
@@ -69,15 +59,6 @@ uint64_t getns() {
   ns  = ts.tv_nsec;
   ns += ts.tv_sec * 1000000000ULL;
   return ns;
-}
-
-inline static unsigned char * unhex(unsigned char *str, size_t str_sz) {
-  int i;
-  for (i = 0; i < str_sz; i += 2) {
-    unhexed[i>>1] = (unhex_tab[str[i+0]&0x4f] & 0xf0)|
-                    (unhex_tab[str[i+1]&0x4f] & 0x0f);
-  }
-  return unhexed;
 }
 
 inline static int priv2hash160(unsigned char *priv) {
@@ -162,11 +143,11 @@ static int pass2hash160(unsigned char *pass, size_t pass_sz) {
 }
 
 static int hexpass2hash160(unsigned char *hpass, size_t hpass_sz) {
-  return pass2hash160(unhex(hpass, hpass_sz), hpass_sz>>1);
+  return pass2hash160(unhex(hpass, hpass_sz, unhexed, sizeof(unhexed)), hpass_sz>>1);
 }
 
 static int hexpriv2hash160(unsigned char *hpriv, size_t hpriv_sz) {
-  return priv2hash160(unhex(hpriv, hpriv_sz));
+  return priv2hash160(unhex(hpriv, hpriv_sz, unhexed, sizeof(unhexed)));
 }
 
 static unsigned char *warpsalt;
