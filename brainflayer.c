@@ -215,6 +215,7 @@ void usage(unsigned char *name) {
                              hex - classic brainwallets (hex encoded)\n\
                              priv - hex encoded private keys\n\
                              warp - WarpWallet (supports -s or -p)\n\
+                             bwio - brainwallet.io (supports -s or -p)\n\
  -s SALT                     use SALT for salted input types (default: none)\n\
  -p PASSPHRASE               use PASSPHRASE for salted input types, inputs\n\
                              will be treated as salts\n\
