@@ -33,20 +33,58 @@ POSSIBILITY OF SUCH DAMAGE.
 Usage
 -----
 
+### Basic
+
 Precompute the bloom filter:
 
 `hex2blf example.hex example.blf`
 
 Run Brainflayer against it:
 
-`brainflayer example.blf < phraselist.txt`
+`brainflayer -b example.blf -i phraselist.txt`
 
 or
 
-`your_generator | brainflayer example.blf`
+`your_generator | brainflayer -b example.blf`
+
+### Advanced
+
+Brainflayer's design is heavily influenced by [Unix philosophy](https://en.wikipedia.org/wiki/Unix_philosophy).
+It (mostly) does one thing: hunt for tasty brainwallets. A major feature it
+does *not* have is generating candidate passwords/passphrases. There are plenty
+of other great tools that do that, and brainflayer is happy to have you pipe
+thier output to it.
+
+Unfortunately, brainflayer is not currently multithreaded. If you want to have
+it keep multiple cores busy, you'll have to come up with a way to distribute
+the work yourself. In my testing, brainflayer benifits significantly from
+hyperthreading, so you may want to run two copies per physical core. Also
+worth noting is that brainflayer mmaps the bloom filter file in shared memory,
+so additional brainflayer processes do not use up that much additional RAM.
+
+Brainflayer supports a few other types of input via the `-t` option.
+
+* `-t hex` hex encoded passwords/passphrases - will be decoded by brainflayer
+for key derivation
+
+* `-t priv` hex encoded private keys - this can be used to support arbitrary
+deterministic wallet schemes via an external program
+
+* `-t warp` salts or passwords/passphrases for WarpWallet
+
+* `-t bwio` salts or passwords/passphrases for brainwallet.io
+
+See the output of `brainflayer -h` for more detailed usage info.
+
+Also included is `blfchk` - you can pipe it hex encoded hash160 to check a
+bloom filter file for. It's very fast - it can easily check millions of
+hash160s per second. Not entirely sure what this is good for but I'm sure
+you'll come up with something.
+
+Building
+--------
 
 Should compile on Linux with `make` provided you have the required devel libs
 installed (at least openssl and gpm are required along with libsecp256k1's
-build dependencies).
-
-Better readme soon. :-P
+build dependencies). I really need to learn autotools. If you file an issue
+about a build failure in libscp256k1 I will close it.
