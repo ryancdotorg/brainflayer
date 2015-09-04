@@ -26,6 +26,7 @@
 #include "bloom.h"
 #include "hash160.h"
 
+#include "brainv2.h"
 #include "warpwallet.h"
 #include "brainwalletio.h"
 
@@ -168,6 +169,14 @@ static int bwiopass2hash160(unsigned char *pass, size_t pass_sz) {
   return priv2hash160(hash256);
 }
 
+static int brainv2pass2hash160(unsigned char *pass, size_t pass_sz) {
+  unsigned char hexout[33];
+  int ret;
+  if ((ret = brainv2(pass, pass_sz, kdfsalt, kdfsalt_sz, hexout)) != 0) return ret;
+  pass[pass_sz] = 0;
+  return pass2hash160(hexout, sizeof(hexout)-1);
+}
+
 static unsigned char *kdfpass;
 static size_t kdfpass_sz;
 
@@ -183,6 +192,14 @@ static int bwiosalt2hash160(unsigned char *salt, size_t salt_sz) {
   if ((ret = brainwalletio(kdfpass, kdfpass_sz, salt, salt_sz, hash256)) != 0) return ret;
   salt[salt_sz] = 0;
   return priv2hash160(hash256);
+}
+
+static int brainv2salt2hash160(unsigned char *salt, size_t salt_sz) {
+  unsigned char hexout[33];
+  int ret;
+  if ((ret = brainv2(kdfpass, kdfpass_sz, salt, salt_sz, hexout)) != 0) return ret;
+  salt[salt_sz] = 0;
+  return pass2hash160(hexout, sizeof(hexout)-1);
 }
 
 // function pointer
@@ -212,10 +229,11 @@ void usage(unsigned char *name) {
  -o FILE                     write to FILE instead of stdout\n\
  -t TYPE                     inputs are TYPE - supported types:\n\
                              str (default) - classic brainwallet passphrases\n\
-                             hex - classic brainwallets (hex encoded)\n\
+                             hex  - classic brainwallets (hex encoded)\n\
                              priv - hex encoded private keys\n\
                              warp - WarpWallet (supports -s or -p)\n\
                              bwio - brainwallet.io (supports -s or -p)\n\
+                             bv2  - brainv2 (supports -s or -p) VERY SLOW\n\
  -s SALT                     use SALT for salted input types (default: none)\n\
  -p PASSPHRASE               use PASSPHRASE for salted input types, inputs\n\
                              will be treated as salts\n\
@@ -327,6 +345,9 @@ int main(int argc, char **argv) {
         bail(83, "CONNECTION TERMINATED\n");
       }
       input2hash160 = popt ? &bwiosalt2hash160 : &bwiopass2hash160;
+    } else if (strcmp(topt, "bv2") == 0) {
+      spok = 1;
+      input2hash160 = popt ? &brainv2salt2hash160 : &brainv2pass2hash160;
     } else {
       bail(1, "Unknown input type '%s'.\n", topt);
     }

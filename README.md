@@ -74,6 +74,10 @@ deterministic wallet schemes via an external program
 
 * `-t bwio` salts or passwords/passphrases for brainwallet.io
 
+* `-t bv2` salts or passwords/passphrases for brainv2 - this one is *very* slow
+           on CPU, however the parameter choices make it a great target for GPUs
+           and FPGAs
+
 See the output of `brainflayer -h` for more detailed usage info.
 
 Also included is `blfchk` - you can pipe it hex encoded hash160 to check a
