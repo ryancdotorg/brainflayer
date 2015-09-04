@@ -4,7 +4,7 @@ Brainflayer
 Brainflayer is a Proof-of-Concept brainwallet cracking tool that uses
 [libsecp256k1](https://github.com/bitcoin/secp256k1) for pubkey generation.
 It was released as part of my DEFCON talk about cracking brainwallets
-[(slides)](https://rya.nc/dc23).
+([slides](https://rya.nc/dc23), [video](https://rya.nc/b6), [why](https://rya.nc/defcon-brainwallets.html)).
 
 The name is a reference to [Mind Flayers](https://en.wikipedia.org/wiki/Illithid),
 a race of monsters from the Dungeons & Dragons role-playing game. They eat
