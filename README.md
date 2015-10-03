@@ -1,3 +1,7 @@
+A modified version for secp256k1 libaray done by Nicolas Courtois, Guangyan Song and Ryan Castellucci
+Speed up public key generation part with a larger precomputed table
+The code is not perfect yet...
+
 Brainflayer
 ===========
 
