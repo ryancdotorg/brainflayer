@@ -136,7 +136,7 @@ void precomputeTable(int window_size){
         for (int i = 1; i < numberOfValues; i++) {
             secp256k1_gej_add_var(&table[j*numberOfValues + i], &table[j*numberOfValues + i - 1], &gbase, NULL);
         }
-        /* Multiply gbase by 16. */
+        
         for (int i = 0; i < window_size; i++) {
             secp256k1_gej_double_var(&gbase, &gbase, NULL);
         }
