@@ -320,30 +320,6 @@ int main(int argc, char **argv) {
       input2hash160 = popt ? &warpsalt2hash160 : &warppass2hash160;
     } else if (strcmp(topt, "bwio") == 0) {
       spok = 1;
-      if (popt && strcmp(popt, "hello world") == 0 && (Wopt == NULL || strcmp(Wopt, "NEVER_TELL_ME_THE_ODDS") != 0)) {
-        // https://www.youtube.com/watch?v=NHWjlCaIrQo
-        for (c = 0; c < 100; ++c) fprintf(stderr, "\n"); // try not to clobber scrollback
-        fprintf(stderr, "\033[2J\033[0;0H\033[0;0f"); // clear terminal and send cursor to top left
-        fflush(stderr);
-        sleep(1);
-        fprintf(stderr, "A STRANGE GAME.\n");
-        sleep(2);
-        fprintf(stderr, "THE ONLY WINNING MOVE IS NOT TO PLAY.\n");
-        sleep(2);
-        fprintf(stderr,
-          "\n"
-          "So, you're looking for that sweet, sweet 0.5BTC bounty? Brainflayer's\n"
-          "cracking speed against brainwallet.io had been communicated to them before\n"
-          "the challange was created. It is likely that the salt was chosen to be\n"
-          "infeasible to crack in the given timeframe by a significant margin. I advise\n"
-          "against trying it - it's probably a waste time and money. If you want to do it\n"
-          "anyway, run with `-W NEVER_TELL_ME_THE_ODDS`.\n"
-        );
-        sleep(2);
-        fprintf(stderr, "\nAs for me, I have better things to do with my CPU cycles.\n");
-        sleep(3);
-        bail(83, "CONNECTION TERMINATED\n");
-      }
       input2hash160 = popt ? &bwiosalt2hash160 : &bwiopass2hash160;
     } else if (strcmp(topt, "bv2") == 0) {
       spok = 1;
