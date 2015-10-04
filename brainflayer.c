@@ -356,22 +356,16 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (bopt) {
-    if ((bloom = bloom_open(bopt)) == NULL) {
-      bail(1, "failed to open bloom filter.\n");
-    }
+  if (bopt && (bloom = bloom_open(bopt)) == NULL) {
+    bail(1, "failed to open bloom filter.\n");
   }
 
-  if (iopt) {
-    if ((ifile = fopen(iopt, "r")) == NULL) {
-      bail(1, "failed to open '%s' for reading: %s\n", iopt, strerror(errno));
-    }
+  if (iopt && (ifile = fopen(iopt, "r")) == NULL) {
+    bail(1, "failed to open '%s' for reading: %s\n", iopt, strerror(errno));
   }
 
-  if (oopt) {
-    if ((ofile = fopen(oopt, (aopt ? "a" : "w"))) == NULL) {
-      bail(1, "failed to open '%s' for writing: %s\n", oopt, strerror(errno));
-    }
+  if (oopt && (ofile = fopen(oopt, (aopt ? "a" : "w"))) == NULL) {
+    bail(1, "failed to open '%s' for writing: %s\n", oopt, strerror(errno));
   }
 
   /* use line buffered output */
