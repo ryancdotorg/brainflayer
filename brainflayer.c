@@ -252,9 +252,8 @@ int main(int argc, char **argv) {
   int c, spok = 0, aopt = 0;
   unsigned char *bopt = NULL, *iopt = NULL, *oopt = NULL;
   unsigned char *topt = NULL, *sopt = NULL, *popt = NULL;
-  unsigned char *Wopt = NULL;
 
-  while ((c = getopt(argc, argv, "ab:hi:o:p:s:t:W:")) != -1) {
+  while ((c = getopt(argc, argv, "ab:hi:o:p:s:t:")) != -1) {
     switch (c) {
       case 'a':
         aopt = 1; // open output file in append mode
@@ -276,9 +275,6 @@ int main(int argc, char **argv) {
         break;
       case 't':
         topt = optarg; // type of input
-        break;
-      case 'W':
-        Wopt = optarg;
         break;
       case 'h':
         // show help
