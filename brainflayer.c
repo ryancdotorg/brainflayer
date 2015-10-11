@@ -51,9 +51,6 @@ do { \
   exit(code); \
 } while (0)
 
-uint64_t time_1, time_2;
-int64_t time_delta;
-
 uint64_t getns() {
   uint64_t ns;
   struct timespec ts;
@@ -237,6 +234,7 @@ void usage(unsigned char *name) {
  -s SALT                     use SALT for salted input types (default: none)\n\
  -p PASSPHRASE               use PASSPHRASE for salted input types, inputs\n\
                              will be treated as salts\n\
+ -v                          verbose - display cracking progress\n\
  -h                          show this help\n", name);
 //q, --quiet                 suppress non-error messages
   exit(1);
@@ -246,17 +244,27 @@ int main(int argc, char **argv) {
   FILE *ifile = stdin;
   FILE *ofile = stdout;
 
+  float alpha, ilines_rate, ilines_rate_avg;
+  uint64_t report_mask = 0;
+  uint64_t time_last, time_curr, time_delta;
+  uint64_t ilines_last, ilines_curr, ilines_delta;
+  uint64_t olines;
+
   char *line = NULL;
   size_t line_sz = 0;
+  int line_read;
 
-  int c, spok = 0, aopt = 0;
+  int c, spok = 0, aopt = 0, vopt = 0;
   unsigned char *bopt = NULL, *iopt = NULL, *oopt = NULL;
   unsigned char *topt = NULL, *sopt = NULL, *popt = NULL;
 
-  while ((c = getopt(argc, argv, "ab:hi:o:p:s:t:")) != -1) {
+  while ((c = getopt(argc, argv, "avb:hi:o:p:s:t:")) != -1) {
     switch (c) {
       case 'a':
         aopt = 1; // open output file in append mode
+        break;
+      case 'v':
+        vopt = 1; // verbose
         break;
       case 'b':
         bopt = optarg; // bloom filter file
@@ -370,19 +378,77 @@ int main(int argc, char **argv) {
 
   secp256k1_start();
 
-  while (getline(&line, &line_sz, ifile) > 0) {
-    line[strlen(line)-1] = 0;
-    input2hash160(line, strlen(line));
-    if (bloom) {
-      if (bloom_chk_hash160(bloom, hash160_uncmp.ul)) {
+  if (vopt) {
+    /* initialize timing data */
+    time_last = getns();
+    olines = ilines_last = ilines_curr = 0;
+    ilines_rate_avg = -1;
+    alpha = 0.500;
+  } else {
+    time_last = 0; // prevent compiler warning about uninitialized use
+  }
+
+  for (;;) {
+    if ((line_read = getline(&line, &line_sz, ifile)-1) > -1) {
+      line[strlen(line)-1] = 0;
+      input2hash160(line, strlen(line));
+      //line[line_read] = 0;
+      //input2hash160(line, line_read);
+      if (bloom) {
+        if (bloom_chk_hash160(bloom, hash160_uncmp.ul)) {
+          fprintresult(ofile, &hash160_uncmp, 'u', topt, line);
+          ++olines;
+        }
+        if (bloom_chk_hash160(bloom, hash160_compr.ul)) {
+          fprintresult(ofile, &hash160_compr, 'c', topt, line);
+          ++olines;
+        }
+      } else {
         fprintresult(ofile, &hash160_uncmp, 'u', topt, line);
-      }
-      if (bloom_chk_hash160(bloom, hash160_compr.ul)) {
         fprintresult(ofile, &hash160_compr, 'c', topt, line);
       }
     } else {
-      fprintresult(ofile, &hash160_uncmp, 'u', topt, line);
-      fprintresult(ofile, &hash160_compr, 'c', topt, line);
+      if (!vopt) break;
+    }
+
+    if (vopt) {
+      ++ilines_curr;
+      if (line_read < 0 || (ilines_curr & report_mask) == 0) {
+        time_curr = getns();
+        time_delta = time_curr - time_last;
+        time_last = time_curr;
+        ilines_delta = ilines_curr - ilines_last;
+        ilines_last = ilines_curr;
+        ilines_rate = (ilines_delta * 1000000000.0) / (time_delta * 1.0);
+        if (ilines_rate_avg < 0) {
+          ilines_rate_avg = ilines_rate;
+        } else {
+          /* exponetial moving average */
+          ilines_rate_avg = alpha * ilines_rate + (1 - alpha) * ilines_rate_avg;
+        }
+        /* target reporting frequency to about once every five seconds */
+        if (time_delta < 2500000000) {
+          report_mask = (report_mask << 1) | 1;
+          ilines_rate_avg = ilines_rate; /* reset EMA */
+        } else if (time_delta > 10000000000) {
+          report_mask >>= 1;
+          ilines_rate_avg = ilines_rate; /* reset EMA */
+        }
+        fprintf(stderr,
+            "\033[0G\033[2K"
+            " rate: %9.2f c/s"
+            " found: %5zu/%zu"
+            "\033[0G",
+            ilines_rate_avg,
+            olines,
+            ilines_curr
+        );
+        fflush(stderr);
+        if (line_read < 0) {
+          fprintf(stderr, "\n");
+          break;
+        }
+      }
     }
   }
 
