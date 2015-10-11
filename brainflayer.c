@@ -253,6 +253,7 @@ int main(int argc, char **argv) {
   float alpha, ilines_rate, ilines_rate_avg;
   uint64_t report_mask = 0;
   uint64_t time_last, time_curr, time_delta;
+  uint64_t time_start, time_elapsed;
   uint64_t ilines_last, ilines_curr, ilines_delta;
   uint64_t olines;
 
@@ -411,12 +412,12 @@ int main(int argc, char **argv) {
 
   if (vopt) {
     /* initialize timing data */
-    time_last = getns();
+    time_start = time_last = getns();
     olines = ilines_last = ilines_curr = 0;
     ilines_rate_avg = -1;
     alpha = 0.500;
   } else {
-    time_last = 0; // prevent compiler warning about uninitialized use
+    time_start = time_last = 0; // prevent compiler warning about uninitialized use
   }
 
   for (;;) {
@@ -447,6 +448,7 @@ int main(int argc, char **argv) {
       if (line_read < 0 || (ilines_curr & report_mask) == 0) {
         time_curr = getns();
         time_delta = time_curr - time_last;
+        time_elapsed = time_curr - time_start;
         time_last = time_curr;
         ilines_delta = ilines_curr - ilines_last;
         ilines_last = ilines_curr;
@@ -468,11 +470,13 @@ int main(int argc, char **argv) {
         fprintf(stderr,
             "\033[0G\033[2K"
             " rate: %9.2f c/s"
-            " found: %5zu/%zu"
+            " found: %5zu/%-10zu"
+            " elapsed: %8.3fs"
             "\033[0G",
             ilines_rate_avg,
             olines,
-            ilines_curr
+            ilines_curr,
+            time_elapsed / 1000000000.0
         );
         fflush(stderr);
         if (line_read < 0) {
