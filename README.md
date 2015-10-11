@@ -1,7 +1,3 @@
-A modified version for secp256k1 libaray done by Nicolas Courtois, Guangyan Song and Ryan Castellucci
-Speed up public key generation part with a larger precomputed table
-The code is not perfect yet...
-
 Brainflayer
 ===========
 
@@ -96,3 +92,12 @@ Should compile on Linux with `make` provided you have the required devel libs
 installed (at least openssl and gpm are required along with libsecp256k1's
 build dependencies). I really need to learn autotools. If you file an issue
 about a build failure in libscp256k1 I will close it.
+
+Authors
+-------
+
+The bulk of Brainflayer was written by Ryan Castellucci. Nicolas Courtois and
+Guangyan Song contributed the code in `ec_pubkey_fast.c` which more than
+doubles the speed of public key computations compared with the stock secp256k1
+library from Bitcoin. This code uses a much larger table for ec multiplication
+and optimized routines for ec addition and doubling.

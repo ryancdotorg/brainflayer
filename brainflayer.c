@@ -19,8 +19,11 @@
 #include <sys/time.h>
 #include <sys/wait.h>
 #include <sys/types.h>
+#include <sys/sysinfo.h>
 
 #include "secp256k1/include/secp256k1.h"
+
+#include "ec_pubkey_fast.h"
 
 #include "hex.h"
 #include "bloom.h"
@@ -45,6 +48,9 @@ static unsigned char unhexed[4096];
 static SHA256_CTX    *sha256_ctx;
 static RIPEMD160_CTX *ripemd160_ctx;
 
+static secp256k1_context_t *secp256k1_ctx;
+static secp256k1_pubkey_t *pubkey;
+
 #define bail(code, ...) \
 do { \
   fprintf(stderr, __VA_ARGS__); \
@@ -60,7 +66,7 @@ uint64_t getns() {
   return ns;
 }
 
-inline static int priv2hash160(unsigned char *priv) {
+static inline void brainflayer_init_globals() {
   /* only initialize stuff once */
   if (!brainflayer_is_init) {
     /* initialize buffers */
@@ -69,18 +75,24 @@ inline static int priv2hash160(unsigned char *priv) {
     /* initialize hashs */
     sha256_ctx    = malloc(sizeof(*sha256_ctx));
     ripemd160_ctx = malloc(sizeof(*ripemd160_ctx));
+    /* initialize pubkey struct */
+    pubkey = malloc(sizeof(*pubkey));
 
     /* set the flag */
     brainflayer_is_init = 1;
   }
+}
+
+inline static int priv2hash160(unsigned char *priv) {
+  //brainflayer_init_globals();
 
   unsigned char *pub_chr = mem;
   int pub_chr_sz;
 
-  secp256k1_ecdsa_pubkey_create(pub_chr, &pub_chr_sz, priv, 0);
+  secp256k1_ec_pubkey_create_precomp(pub_chr, &pub_chr_sz, priv);
 
 #if 0
-  i = 0;
+  int i = 0;
   for (i = 0; i < pub_chr_sz; i++) {
     printf("%02x", pub_chr[i]);
   }
@@ -90,7 +102,7 @@ inline static int priv2hash160(unsigned char *priv) {
   /* compute hash160 for uncompressed public key */
   /* sha256(pub) */
   SHA256_Init(sha256_ctx);
-  SHA256_Update(sha256_ctx, pub_chr, pub_chr_sz);
+  SHA256_Update(sha256_ctx, pub_chr, 65);
   SHA256_Final(hash256, sha256_ctx);
   /* ripemd160(sha256(pub)) */
   RIPEMD160_Init(ripemd160_ctx);
@@ -120,18 +132,7 @@ inline static int priv2hash160(unsigned char *priv) {
 }
 
 static int pass2hash160(unsigned char *pass, size_t pass_sz) {
-  /* only initialize stuff once */
-  if (!brainflayer_is_init) {
-    /* initialize buffers */
-    mem = malloc(4096);
-
-    /* initialize hashs */
-    sha256_ctx    = malloc(sizeof(*sha256_ctx));
-    ripemd160_ctx = malloc(sizeof(*ripemd160_ctx));
-
-    /* set the flag */
-    brainflayer_is_init = 1;
-  }
+  //brainflayer_init_globals();
 
   /* privkey = sha256(passphrase) */
   SHA256_Init(sha256_ctx);
@@ -234,6 +235,11 @@ void usage(unsigned char *name) {
  -s SALT                     use SALT for salted input types (default: none)\n\
  -p PASSPHRASE               use PASSPHRASE for salted input types, inputs\n\
                              will be treated as salts\n\
+ -w WINDOW_SIZE              window size for ecmult table (default: 16)\n\
+                             uses about 3 * 2^w KiB memory on startup, but\n\
+                             only about 2^w KiB once the table is built\n\
+ -m FILE                     load ecmult table from FILE\n\
+                             the ecmtabgen tool can build such a table\n\
  -v                          verbose - display cracking progress\n\
  -h                          show this help\n", name);
 //q, --quiet                 suppress non-error messages
@@ -254,14 +260,22 @@ int main(int argc, char **argv) {
   size_t line_sz = 0;
   int line_read;
 
-  int c, spok = 0, aopt = 0, vopt = 0;
+  int c, spok = 0, aopt = 0, vopt = 0, wopt = 16;
   unsigned char *bopt = NULL, *iopt = NULL, *oopt = NULL;
   unsigned char *topt = NULL, *sopt = NULL, *popt = NULL;
+  unsigned char *mopt = NULL;
 
-  while ((c = getopt(argc, argv, "avb:hi:o:p:s:t:")) != -1) {
+  while ((c = getopt(argc, argv, "avb:hi:m:o:p:s:t:w:")) != -1) {
     switch (c) {
       case 'a':
         aopt = 1; // open output file in append mode
+        break;
+      case 'w':
+        if (wopt > 1) wopt = atoi(optarg);
+        break;
+      case 'm':
+        mopt = optarg; // table file
+        wopt = 1; // auto
         break;
       case 'v':
         vopt = 1; // verbose
@@ -309,6 +323,18 @@ int main(int argc, char **argv) {
         fprintf(stderr, "    '%s'\n", argv[optind++]);
       }
       exit(1);
+    }
+  }
+
+  if (wopt < 1 || wopt > 28) {
+    bail(1, "Invalid window size '%d' - must be >= 1 and <= 28\n", wopt);
+  } else {
+    // very rough sanity check of window size
+    struct sysinfo info;
+    sysinfo(&info);
+    uint64_t sysram = info.mem_unit * info.totalram;
+    if (3584LLU*(1<<wopt) > sysram) {
+      bail(1, "Not enough ram for requested window size '%d'\n", wopt);
     }
   }
 
@@ -376,7 +402,12 @@ int main(int argc, char **argv) {
   setvbuf(ofile,  NULL, _IOLBF, 0);
   setvbuf(stderr, NULL, _IONBF, 0);
 
-  secp256k1_start();
+  brainflayer_init_globals();
+  secp256k1_ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);
+
+  if (secp256k1_ec_pubkey_precomp_table(wopt, mopt) != 0) {
+    bail(1, "failed to initialize precomputed table\n");
+  }
 
   if (vopt) {
     /* initialize timing data */
@@ -451,8 +482,6 @@ int main(int argc, char **argv) {
       }
     }
   }
-
-  secp256k1_stop();
 
   return 0;
 }

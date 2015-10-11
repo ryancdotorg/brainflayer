@@ -31,6 +31,7 @@
 brainflayer
 hex2blf
 blfchk
+ecmtabgen
 
 # Debug files
 *.dSYM/
