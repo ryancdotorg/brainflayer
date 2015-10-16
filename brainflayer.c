@@ -36,6 +36,7 @@
 static int brainflayer_is_init = 0;
 
 static unsigned char hash256[SHA256_DIGEST_LENGTH];
+static unsigned char priv256[SHA256_DIGEST_LENGTH];
 static hash160_t hash160_tmp;
 static hash160_t hash160_compr;
 static hash160_t hash160_uncmp;
@@ -43,7 +44,7 @@ static unsigned char *mem;
 
 static unsigned char *bloom = NULL;
 
-static unsigned char unhexed[4096];
+static unsigned char hexed[4096], unhexed[4096];
 
 static SHA256_CTX    *sha256_ctx;
 static RIPEMD160_CTX *ripemd160_ctx;
@@ -137,9 +138,9 @@ static int pass2hash160(unsigned char *pass, size_t pass_sz) {
   /* privkey = sha256(passphrase) */
   SHA256_Init(sha256_ctx);
   SHA256_Update(sha256_ctx, pass, pass_sz);
-  SHA256_Final(hash256, sha256_ctx);
+  SHA256_Final(priv256, sha256_ctx);
 
-  return priv2hash160(hash256);
+  return priv2hash160(priv256);
 }
 
 static int hexpass2hash160(unsigned char *hpass, size_t hpass_sz) {
@@ -147,7 +148,7 @@ static int hexpass2hash160(unsigned char *hpass, size_t hpass_sz) {
 }
 
 static int hexpriv2hash160(unsigned char *hpriv, size_t hpriv_sz) {
-  return priv2hash160(unhex(hpriv, hpriv_sz, unhexed, sizeof(unhexed)));
+  return priv2hash160(unhex(hpriv, hpriv_sz, priv256, sizeof(priv256)));
 }
 
 static unsigned char *kdfsalt;
@@ -155,16 +156,16 @@ static size_t kdfsalt_sz;
 
 static int warppass2hash160(unsigned char *pass, size_t pass_sz) {
   int ret;
-  if ((ret = warpwallet(pass, pass_sz, kdfsalt, kdfsalt_sz, hash256)) != 0) return ret;
+  if ((ret = warpwallet(pass, pass_sz, kdfsalt, kdfsalt_sz, priv256)) != 0) return ret;
   pass[pass_sz] = 0;
-  return priv2hash160(hash256);
+  return priv2hash160(priv256);
 }
 
 static int bwiopass2hash160(unsigned char *pass, size_t pass_sz) {
   int ret;
-  if ((ret = brainwalletio(pass, pass_sz, kdfsalt, kdfsalt_sz, hash256)) != 0) return ret;
+  if ((ret = brainwalletio(pass, pass_sz, kdfsalt, kdfsalt_sz, priv256)) != 0) return ret;
   pass[pass_sz] = 0;
-  return priv2hash160(hash256);
+  return priv2hash160(priv256);
 }
 
 static int brainv2pass2hash160(unsigned char *pass, size_t pass_sz) {
@@ -180,16 +181,16 @@ static size_t kdfpass_sz;
 
 static int warpsalt2hash160(unsigned char *salt, size_t salt_sz) {
   int ret;
-  if ((ret = warpwallet(kdfpass, kdfpass_sz, salt, salt_sz, hash256)) != 0) return ret;
+  if ((ret = warpwallet(kdfpass, kdfpass_sz, salt, salt_sz, priv256)) != 0) return ret;
   salt[salt_sz] = 0;
-  return priv2hash160(hash256);
+  return priv2hash160(priv256);
 }
 
 static int bwiosalt2hash160(unsigned char *salt, size_t salt_sz) {
   int ret;
-  if ((ret = brainwalletio(kdfpass, kdfpass_sz, salt, salt_sz, hash256)) != 0) return ret;
+  if ((ret = brainwalletio(kdfpass, kdfpass_sz, salt, salt_sz, priv256)) != 0) return ret;
   salt[salt_sz] = 0;
-  return priv2hash160(hash256);
+  return priv2hash160(priv256);
 }
 
 static int brainv2salt2hash160(unsigned char *salt, size_t salt_sz) {
@@ -218,11 +219,33 @@ inline static void fprintresult(FILE *f, hash160_t *hash,
           input);
 }
 
+inline static void fprintlookup(FILE *f,
+                                hash160_t *hashu,
+                                hash160_t *hashc,
+                                unsigned char *priv,
+                                unsigned char *type,
+                                unsigned char *input) {
+  fprintf(f, "%08x%08x%08x%08x%08x:%08x%08x%08x%08x%08x:%s:%s:%s\n",
+          ntohl(hashu->ul[0]),
+          ntohl(hashu->ul[1]),
+          ntohl(hashu->ul[2]),
+          ntohl(hashu->ul[3]),
+          ntohl(hashu->ul[4]),
+          ntohl(hashc->ul[0]),
+          ntohl(hashc->ul[1]),
+          ntohl(hashc->ul[2]),
+          ntohl(hashc->ul[3]),
+          ntohl(hashc->ul[4]),
+          hex(priv, 32, hexed, sizeof(hexed)),
+          type,
+          input);
+}
 
 void usage(unsigned char *name) {
   printf("Usage: %s [OPTION]...\n\n\
  -a                          open output file in append mode\n\
  -b FILE                     check for matches against bloom filter FILE\n\
+ -L                          use single line mode for table output\n\
  -i FILE                     read from FILE instead of stdin\n\
  -o FILE                     write to FILE instead of stdout\n\
  -t TYPE                     inputs are TYPE - supported types:\n\
@@ -261,12 +284,12 @@ int main(int argc, char **argv) {
   size_t line_sz = 0;
   int line_read;
 
-  int c, spok = 0, aopt = 0, vopt = 0, wopt = 16;
+  int c, spok = 0, aopt = 0, vopt = 0, wopt = 16, Lopt = 0;
   unsigned char *bopt = NULL, *iopt = NULL, *oopt = NULL;
   unsigned char *topt = NULL, *sopt = NULL, *popt = NULL;
   unsigned char *mopt = NULL;
 
-  while ((c = getopt(argc, argv, "avb:hi:m:o:p:s:t:w:")) != -1) {
+  while ((c = getopt(argc, argv, "avb:hi:m:o:p:s:t:w:L")) != -1) {
     switch (c) {
       case 'a':
         aopt = 1; // open output file in append mode
@@ -298,6 +321,9 @@ int main(int argc, char **argv) {
         break;
       case 't':
         topt = optarg; // type of input
+        break;
+      case 'L':
+        Lopt = 1; // lookup output
         break;
       case 'h':
         // show help
@@ -435,6 +461,8 @@ int main(int argc, char **argv) {
           fprintresult(ofile, &hash160_compr, 'c', topt, line);
           ++olines;
         }
+      } else if (Lopt) {
+        fprintlookup(ofile, &hash160_uncmp, &hash160_compr, priv256, topt, line);
       } else {
         fprintresult(ofile, &hash160_uncmp, 'u', topt, line);
         fprintresult(ofile, &hash160_compr, 'c', topt, line);
