@@ -454,10 +454,12 @@ int main(int argc, char **argv) {
       //input2hash160(line, line_read);
       if (bloom) {
         if (bloom_chk_hash160(bloom, hash160_uncmp.ul)) {
+          if (vopt && ofile == stdout) fprintf(ofile, "\033[0K");
           fprintresult(ofile, &hash160_uncmp, 'u', topt, line);
           ++olines;
         }
         if (bloom_chk_hash160(bloom, hash160_compr.ul)) {
+          if (vopt && ofile == stdout) fprintf(ofile, "\033[0K");
           fprintresult(ofile, &hash160_compr, 'c', topt, line);
           ++olines;
         }
