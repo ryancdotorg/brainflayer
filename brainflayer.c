@@ -498,10 +498,8 @@ int main(int argc, char **argv) {
         if (kopt && raw_lines < kopt) { continue; }
         if (nopt_mod && raw_lines % nopt_mod != nopt_rem) { continue; }
       }
-      line[strlen(line)-1] = 0;
-      input2hash160(line, strlen(line));
-      //line[line_read] = 0;
-      //input2hash160(line, line_read);
+      line[line_read] = 0;
+      input2hash160(line, line_read);
       if (bloom) {
         if (bloom_chk_hash160(bloom, hash160_uncmp.ul)) {
           if (vopt && ofile == stdout) fprintf(ofile, "\033[0K");
