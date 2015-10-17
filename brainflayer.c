@@ -470,8 +470,9 @@ int main(int argc, char **argv) {
     bail(1, "failed to open '%s' for writing: %s\n", oopt, strerror(errno));
   }
 
-  /* use line buffered output */
+  /* line buffer output */
   setvbuf(ofile,  NULL, _IOLBF, 0);
+  /* don't buffer stderr */
   setvbuf(stderr, NULL, _IONBF, 0);
 
   brainflayer_init_globals();
