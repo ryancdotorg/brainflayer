@@ -260,6 +260,8 @@ void usage(unsigned char *name) {
  -s SALT                     use SALT for salted input types (default: none)\n\
  -p PASSPHRASE               use PASSPHRASE for salted input types, inputs\n\
                              will be treated as salts\n\
+ -k K                        skip the first K lines of input\n\
+ -n K/N                      use only the Kth of every N input lines\n\
  -w WINDOW_SIZE              window size for ecmult table (default: 16)\n\
                              uses about 3 * 2^w KiB memory on startup, but\n\
                              only about 2^w KiB once the table is built\n\
@@ -278,25 +280,41 @@ int main(int argc, char **argv) {
   int ret;
 
   float alpha, ilines_rate, ilines_rate_avg;
+  int64_t raw_lines = -1;
   uint64_t report_mask = 0;
   uint64_t time_last, time_curr, time_delta;
   uint64_t time_start, time_elapsed;
   uint64_t ilines_last, ilines_curr, ilines_delta;
   uint64_t olines;
 
+  int skipping = 0;
+
   char *line = NULL;
   size_t line_sz = 0;
   int line_read;
 
   int c, spok = 0, aopt = 0, vopt = 0, wopt = 16, Lopt = 0;
+  int nopt_mod = 0, nopt_rem = 0;
+  uint64_t kopt = 0;
   unsigned char *bopt = NULL, *iopt = NULL, *oopt = NULL;
   unsigned char *topt = NULL, *sopt = NULL, *popt = NULL;
   unsigned char *mopt = NULL;
 
-  while ((c = getopt(argc, argv, "avb:hi:m:o:p:s:t:w:L")) != -1) {
+  while ((c = getopt(argc, argv, "avb:hi:k:m:n:o:p:s:t:w:L")) != -1) {
     switch (c) {
       case 'a':
         aopt = 1; // open output file in append mode
+        break;
+      case 'k':
+        kopt = strtoull(optarg, NULL, 10); // skip first k lines of input
+        skipping = 1;
+        break;
+      case 'n':
+        // only try the rem'th of every mod lines (one indexed)
+        nopt_rem = atoi(optarg) - 1;
+        optarg = strchr(optarg, '/');
+        if (optarg != NULL) { nopt_mod = atoi(optarg+1); }
+        skipping = 1;
         break;
       case 'w':
         if (wopt > 1) wopt = atoi(optarg);
@@ -354,6 +372,17 @@ int main(int argc, char **argv) {
         fprintf(stderr, "    '%s'\n", argv[optind++]);
       }
       exit(1);
+    }
+  }
+
+  if (nopt_rem != 0 || nopt_mod != 0) {
+    // note that nopt_rem has had one subtracted at option parsing
+    if (nopt_rem >= nopt_mod) {
+      bail(1, "Invalid '-n' argument, remainder '%d' must be <= modulus '%d'\n", nopt_rem+1, nopt_mod);
+    } else if (nopt_rem < 0) {
+      bail(1, "Invalid '-n' argument, remainder '%d' must be > 0\n", nopt_rem+1);
+    } else if (nopt_mod < 1) {
+      bail(1, "Invalid '-n' argument, modulus '%d' must be > 0\n", nopt_mod);
     }
   }
 
@@ -460,6 +489,11 @@ int main(int argc, char **argv) {
 
   for (;;) {
     if ((line_read = getline(&line, &line_sz, ifile)-1) > -1) {
+      if (skipping) {
+        ++raw_lines;
+        if (kopt && raw_lines < kopt) { continue; }
+        if (nopt_mod && raw_lines % nopt_mod != nopt_rem) { continue; }
+      }
       line[strlen(line)-1] = 0;
       input2hash160(line, strlen(line));
       //line[line_read] = 0;
