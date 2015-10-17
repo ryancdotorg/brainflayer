@@ -18,15 +18,18 @@
 
 #include "hex.h"
 #include "bloom.h"
+#include "mmapf.h"
 #include "hash160.h"
 
 int main(int argc, char **argv) {
+  int ret;
   hash160_t hash;
   char *line = NULL;
   size_t line_sz = 0;
   unsigned char buf[128];
   unsigned char *bloom, *bloomfile;
   FILE *ifile = stdin, *ofile = stdout;
+  mmapf_ctx bloom_mmapf;
 
   if (argc != 2) {
     fprintf(stderr, "Usage: %s BLOOM_FILTER_FILE\n", argv[0]);
@@ -35,10 +38,15 @@ int main(int argc, char **argv) {
 
   bloomfile = argv[1];
 
-  if ((bloom = bloom_open(bloomfile)) == NULL) {
-    fprintf(stderr, "failed to open bloom filter.\n");
+  if ((ret = mmapf(&bloom_mmapf, bloomfile, BLOOM_SIZE, MMAPF_RNDRD)) != MMAPF_OKAY) {
+    fprintf(stderr, "failed to open bloom filter '%s': %s\n", bloomfile, mmapf_strerror(ret));
+    return 1;
+  } else if (bloom_mmapf.mem == NULL) {
+    fprintf(stderr, "got NULL pointer trying to set up bloom filter\n");
     return 1;
   }
+
+  bloom = bloom_mmapf.mem;
 
   while (getline(&line, &line_sz, ifile) > 0) {
     unhex(line, strlen(line), hash.uc, sizeof(hash.uc)); 

@@ -60,8 +60,6 @@ inline unsigned int bloom_chk_hash160(unsigned char *bloom, uint32_t *h) {
   return 1;
 }
 
-unsigned char * bloom_open(unsigned char *);
-
 //#define bloom_new() malloc(536870912)
 //unsigned char * bloom_load(unsigned char *);
 //int bloom_save(unsigned char *, unsigned char *);

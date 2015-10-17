@@ -23,6 +23,8 @@
 #include "secp256k1/src/ecmult_gen_impl.h"
 #include "secp256k1/src/ecmult.h"
 
+#include "mmapf.h"
+
 #undef ASSERT
 
 #define READBIT(A, B) ((A >> (B & 7)) & 1)
@@ -35,6 +37,7 @@ secp256k1_ge_t *prec;
 int remmining = 0;
 int WINDOW_SIZE = 0;
 size_t MMAP_SIZE;
+mmapf_ctx prec_mmapf;
 
 int secp256k1_ec_pubkey_precomp_table_save(int window_size, unsigned char *filename) {
     int fd, ret;
@@ -56,9 +59,9 @@ int secp256k1_ec_pubkey_precomp_table_save(int window_size, unsigned char *filen
 }
 
 int secp256k1_ec_pubkey_precomp_table(int window_size, unsigned char *filename) {
-    int ret, fd;
+    int ret;
     struct stat sb;
-    size_t prec_sz, page_sz, mmap_sz;
+    size_t prec_sz;
 	secp256k1_gej_t gj; // base point in jacobian coordinates
 	secp256k1_gej_t *table;
 
@@ -71,6 +74,7 @@ int secp256k1_ec_pubkey_precomp_table(int window_size, unsigned char *filename) 
         }
     }
 
+    // try to find a window size that matched the file size
     for (;;) {
 	    WINDOW_SIZE = window_size;
         n_values = 1 << window_size;
@@ -86,32 +90,16 @@ int secp256k1_ec_pubkey_precomp_table(int window_size, unsigned char *filename) 
         ++window_size;
     }
 
-    page_sz = sysconf(_SC_PAGE_SIZE);
-    // round up to the next multiple of the page size
-    mmap_sz = prec_sz % page_sz ? (prec_sz/page_sz+1)*page_sz : prec_sz;
-
-	//prec = malloc(prec_sz);
-    if (prec != NULL) munmap(prec, MMAP_SIZE); // work correctly if called again
-    if (filename) {
-        if (stat(filename, &sb) == 0) {
-            if (!S_ISREG(sb.st_mode))
-                return -100;
-            if (sb.st_size != prec_sz)
-                return -102;
-            if ((fd = open(filename, O_RDONLY)) < 0)
-                return fd;
-            if ((ret = posix_fadvise(fd, 0, 0, POSIX_FADV_WILLNEED|POSIX_FADV_RANDOM)) < 0)
-                return ret;
-            if ((prec = mmap(NULL, MMAP_SIZE = mmap_sz, PROT_READ, MAP_SHARED|MAP_NORESERVE|MAP_POPULATE, fd, 0)) == NULL)
-                return -103;
-        } else {
-            return -101;
-        }
-        
-        return 0;
-    } else {
-        prec = mmap(NULL, MMAP_SIZE = mmap_sz, PROT_READ|PROT_WRITE, MAP_ANONYMOUS|MAP_PRIVATE, -1, 0);
+    if ((ret = mmapf(&prec_mmapf, filename, prec_sz, MMAPF_RNDRD)) != MMAPF_OKAY) {
+        fprintf(stderr, "failed to open ecmult table '%s': %s\n", filename, mmapf_strerror(ret));
+        exit(1);
+    } else if (prec_mmapf.mem == NULL) {
+        fprintf(stderr, "got NULL pointer from mmapf\n");
+        exit(1);
     }
+    prec = prec_mmapf.mem;
+
+    if (filename) { return 0; }
 
 	table = malloc(n_windows*n_values*sizeof(secp256k1_gej_t));
 

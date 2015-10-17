@@ -27,6 +27,7 @@
 
 #include "hex.h"
 #include "bloom.h"
+#include "mmapf.h"
 #include "hash160.h"
 
 #include "brainv2.h"
@@ -42,6 +43,7 @@ static hash160_t hash160_compr;
 static hash160_t hash160_uncmp;
 static unsigned char *mem;
 
+static mmapf_ctx bloom_mmapf;
 static unsigned char *bloom = NULL;
 
 static unsigned char hexed[4096], unhexed[4096];
@@ -273,6 +275,8 @@ int main(int argc, char **argv) {
   FILE *ifile = stdin;
   FILE *ofile = stdout;
 
+  int ret;
+
   float alpha, ilines_rate, ilines_rate_avg;
   uint64_t report_mask = 0;
   uint64_t time_last, time_curr, time_delta;
@@ -413,8 +417,16 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (bopt && (bloom = bloom_open(bopt)) == NULL) {
-    bail(1, "failed to open bloom filter.\n");
+  if (bopt) {
+    if (Lopt) {
+      bail(1, "The '-L' option cannot be used with a bloom filter\n");
+    }
+    if ((ret = mmapf(&bloom_mmapf, bopt, BLOOM_SIZE, MMAPF_RNDRD)) != MMAPF_OKAY) {
+      bail(1, "failed to open bloom filter '%s': %s\n", bopt, mmapf_strerror(ret));
+    } else if (bloom_mmapf.mem == NULL) {
+      bail(1, "got NULL pointer trying to set up bloom filter\n");
+    }
+    bloom = bloom_mmapf.mem;
   }
 
   if (iopt && (ifile = fopen(iopt, "r")) == NULL) {
