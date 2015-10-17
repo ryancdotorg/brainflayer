@@ -458,8 +458,12 @@ int main(int argc, char **argv) {
     bloom = bloom_mmapf.mem;
   }
 
-  if (iopt && (ifile = fopen(iopt, "r")) == NULL) {
-    bail(1, "failed to open '%s' for reading: %s\n", iopt, strerror(errno));
+  if (iopt) {
+    if ((ifile = fopen(iopt, "r")) == NULL) {
+      bail(1, "failed to open '%s' for reading: %s\n", iopt, strerror(errno));
+    }
+    // increases readahead window, don't really care if it fails
+    posix_fadvise(fileno(ifile), 0, 0, POSIX_FADV_SEQUENTIAL);
   }
 
   if (oopt && (ofile = fopen(oopt, (aopt ? "a" : "w"))) == NULL) {
