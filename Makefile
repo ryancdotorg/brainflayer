@@ -1,5 +1,5 @@
 HEADERS = bloom.h crack.h hash160.h warpwallet.h
-OBJECTS = brainflayer.o bloom.o hex2blf.o warpwallet.o hex.o mmapf.o
+OBJECTS = brainflayer.o bloom.o hex2blf.o warpwallet.o hex.o mmapf.o hsearchf.o
 BINARIES = brainflayer hex2blf blfchk ecmtabgen
 LIBS = -lssl -lrt -lcrypto -lz -ldl -lgmp
 CFLAGS = -O3 -flto -pedantic -std=gnu99 -Wall -Wextra -funsigned-char -Wno-pointer-sign -Wno-sign-compare
@@ -36,7 +36,7 @@ ec_pubkey_fast.o: ec_pubkey_fast.c secp256k1/include/secp256k1.h
 %.o: %.c
 	$(COMPILE) -c $< -o $@
 
-blfchk: blfchk.o hex.o bloom.o mmapf.o
+blfchk: blfchk.o hex.o bloom.o mmapf.o hsearchf.o
 	$(COMPILE) -static $^ $(LIBS) -o $@
 
 hex2blf: hex2blf.o hex.o bloom.o mmapf.o
