@@ -29,6 +29,7 @@
 #include "bloom.h"
 #include "mmapf.h"
 #include "hash160.h"
+#include "hsearchf.h"
 
 #include "brainv2.h"
 #include "warpwallet.h"
@@ -247,6 +248,7 @@ void usage(unsigned char *name) {
   printf("Usage: %s [OPTION]...\n\n\
  -a                          open output file in append mode\n\
  -b FILE                     check for matches against bloom filter FILE\n\
+ -f FILE                     verify matches against sorted hash160s in FILE\n\
  -L                          use single line mode for table output\n\
  -i FILE                     read from FILE instead of stdin\n\
  -o FILE                     write to FILE instead of stdout\n\
@@ -276,6 +278,7 @@ void usage(unsigned char *name) {
 int main(int argc, char **argv) {
   FILE *ifile = stdin;
   FILE *ofile = stdout;
+  FILE *ffile = NULL;
 
   int ret;
 
@@ -298,9 +301,9 @@ int main(int argc, char **argv) {
   uint64_t kopt = 0;
   unsigned char *bopt = NULL, *iopt = NULL, *oopt = NULL;
   unsigned char *topt = NULL, *sopt = NULL, *popt = NULL;
-  unsigned char *mopt = NULL;
+  unsigned char *mopt = NULL, *fopt = NULL;
 
-  while ((c = getopt(argc, argv, "avb:hi:k:m:n:o:p:s:t:w:L")) != -1) {
+  while ((c = getopt(argc, argv, "avb:hi:k:f:m:n:o:p:s:t:w:L")) != -1) {
     switch (c) {
       case 'a':
         aopt = 1; // open output file in append mode
@@ -328,6 +331,9 @@ int main(int argc, char **argv) {
         break;
       case 'b':
         bopt = optarg; // bloom filter file
+        break;
+      case 'f':
+        fopt = optarg; // full filter file
         break;
       case 'i':
         iopt = optarg; // input file
@@ -458,6 +464,15 @@ int main(int argc, char **argv) {
     bloom = bloom_mmapf.mem;
   }
 
+  if (fopt) {
+    if (!bopt) {
+      bail(1, "The '-f' option must be used with a bloom filter\n");
+    }
+    if ((ffile = fopen(fopt, "r")) == NULL) {
+      bail(1, "failed to open '%s' for reading: %s\n", fopt, strerror(errno));
+    }
+  }
+
   if (iopt) {
     if ((ifile = fopen(iopt, "r")) == NULL) {
       bail(1, "failed to open '%s' for reading: %s\n", iopt, strerror(errno));
@@ -503,14 +518,18 @@ int main(int argc, char **argv) {
       input2hash160(line, line_read);
       if (bloom) {
         if (bloom_chk_hash160(bloom, hash160_uncmp.ul)) {
-          if (vopt && ofile == stdout) fprintf(ofile, "\033[0K");
-          fprintresult(ofile, &hash160_uncmp, 'u', topt, line);
-          ++olines;
+          if (!fopt || hsearchf(ffile, &hash160_uncmp)) {
+            if (vopt && ofile == stdout) fprintf(ofile, "\033[0K");
+            fprintresult(ofile, &hash160_uncmp, 'u', topt, line);
+            ++olines;
+          }
         }
         if (bloom_chk_hash160(bloom, hash160_compr.ul)) {
-          if (vopt && ofile == stdout) fprintf(ofile, "\033[0K");
-          fprintresult(ofile, &hash160_compr, 'c', topt, line);
-          ++olines;
+          if (!fopt || hsearchf(ffile, &hash160_compr)) {
+            if (vopt && ofile == stdout) fprintf(ofile, "\033[0K");
+            fprintresult(ofile, &hash160_compr, 'c', topt, line);
+            ++olines;
+          }
         }
       } else if (Lopt) {
         fprintlookup(ofile, &hash160_uncmp, &hash160_compr, priv256, topt, line);

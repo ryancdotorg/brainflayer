@@ -45,7 +45,7 @@ hex2blf: hex2blf.o hex.o bloom.o mmapf.o
 ecmtabgen: ecmtabgen.o mmapf.o ec_pubkey_fast.o secp256k1/.libs/libsecp256k1.a
 	$(COMPILE) -static $^ $(LIBS) -o $@
 
-brainflayer: brainflayer.o hex.o bloom.o mmapf.o warpwallet.o brainwalletio.o brainv2.o ec_pubkey_fast.o secp256k1/.libs/libsecp256k1.a scrypt-jane/scrypt-jane.o
+brainflayer: brainflayer.o hex.o bloom.o mmapf.o hsearchf.o warpwallet.o brainwalletio.o brainv2.o ec_pubkey_fast.o secp256k1/.libs/libsecp256k1.a scrypt-jane/scrypt-jane.o
 	$(COMPILE) -static $^ $(LIBS) -o $@
 
 clean:
