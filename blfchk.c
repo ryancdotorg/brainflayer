@@ -61,7 +61,8 @@ int main(int argc, char **argv) {
         //fprintf(ofile, "%s (false positive)\n", hex(hash.uc, sizeof(hash.uc), buf, sizeof(buf)));
         continue;
       }
-      fprintf(ofile, "%s\n", hex(hash.uc, sizeof(hash.uc), buf, sizeof(buf)));
+      //fprintf(ofile, "%s\n", hex(hash.uc, sizeof(hash.uc), buf, sizeof(buf)));
+      fprintf(ofile, "%s", line);
     }
   }
 
