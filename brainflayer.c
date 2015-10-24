@@ -23,6 +23,8 @@
 
 #include "secp256k1/include/secp256k1.h"
 
+#include "ripemd160_256.h"
+
 #include "ec_pubkey_fast.h"
 
 #include "hex.h"
@@ -39,7 +41,6 @@ static int brainflayer_is_init = 0;
 
 static unsigned char hash256[SHA256_DIGEST_LENGTH];
 static unsigned char priv256[SHA256_DIGEST_LENGTH];
-static hash160_t hash160_tmp;
 static hash160_t hash160_compr;
 static hash160_t hash160_uncmp;
 static unsigned char *mem;
@@ -50,7 +51,6 @@ static unsigned char *bloom = NULL;
 static unsigned char hexed[4096], unhexed[4096];
 
 static SHA256_CTX    *sha256_ctx;
-static RIPEMD160_CTX *ripemd160_ctx;
 
 static secp256k1_context_t *secp256k1_ctx;
 static secp256k1_pubkey_t *pubkey;
@@ -78,7 +78,6 @@ static inline void brainflayer_init_globals() {
 
     /* initialize hashs */
     sha256_ctx    = malloc(sizeof(*sha256_ctx));
-    ripemd160_ctx = malloc(sizeof(*ripemd160_ctx));
     /* initialize pubkey struct */
     pubkey = malloc(sizeof(*pubkey));
 
@@ -109,12 +108,7 @@ inline static int priv2hash160(unsigned char *priv) {
   SHA256_Update(sha256_ctx, pub_chr, 65);
   SHA256_Final(hash256, sha256_ctx);
   /* ripemd160(sha256(pub)) */
-  RIPEMD160_Init(ripemd160_ctx);
-  RIPEMD160_Update(ripemd160_ctx, hash256, SHA256_DIGEST_LENGTH);
-  RIPEMD160_Final(hash160_tmp.uc, ripemd160_ctx);
-
-  /* save result to global struct */
-  memcpy(hash160_uncmp.uc, hash160_tmp.uc, 20);
+  ripemd160_256(hash256, hash160_uncmp.uc);
 
   /* quick and dirty public key compression */
   pub_chr[0] = 0x02 | (pub_chr[64] & 0x01);
@@ -125,12 +119,7 @@ inline static int priv2hash160(unsigned char *priv) {
   SHA256_Update(sha256_ctx, pub_chr, 33);
   SHA256_Final(hash256, sha256_ctx);
   /* ripemd160(sha256(pub)) */
-  RIPEMD160_Init(ripemd160_ctx);
-  RIPEMD160_Update(ripemd160_ctx, hash256, SHA256_DIGEST_LENGTH);
-  RIPEMD160_Final(hash160_tmp.uc, ripemd160_ctx);
-
-  /* save result to global struct */
-  memcpy(hash160_compr.uc, hash160_tmp.uc, 20);
+  ripemd160_256(hash256, hash160_compr.uc);
 
   return 0;
 }
