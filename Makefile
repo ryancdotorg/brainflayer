@@ -1,9 +1,9 @@
 HEADERS = bloom.h crack.h hash160.h warpwallet.h
-OBJ_MAIN = brainflayer.o hex2blf.o blfchk.o ecmtabgen.o
+OBJ_MAIN = brainflayer.o hex2blf.o blfchk.o ecmtabgen.o hexln.o
 OBJ_UTIL = hex.o bloom.o mmapf.o hsearchf.o ec_pubkey_fast.o ripemd160_256.o dldummy.o
 OBJ_FMT = warpwallet.o brainwalletio.o brainv2.o
 OBJECTS = $(OBJ_MAIN) $(OBJ_UTIL) $(OBJ_FMT)
-BINARIES = brainflayer hex2blf blfchk ecmtabgen
+BINARIES = brainflayer hexln hex2blf blfchk ecmtabgen
 LIBS = -lssl -lrt -lcrypto -lz -lgmp
 CFLAGS = -O3 -flto -pedantic -std=gnu99 -Wall -Wextra -funsigned-char -Wno-pointer-sign -Wno-sign-compare
 COMPILE = gcc $(CFLAGS)
@@ -38,6 +38,9 @@ ec_pubkey_fast.o: ec_pubkey_fast.c secp256k1/include/secp256k1.h
 
 %.o: %.c
 	$(COMPILE) -c $< -o $@
+
+hexln: hexln.o hex.o
+	$(COMPILE) -static $^ $(LIBS) -o $@
 
 blfchk: blfchk.o hex.o bloom.o mmapf.o hsearchf.o
 	$(COMPILE) -static $^ $(LIBS) -o $@

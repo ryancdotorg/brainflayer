@@ -29,6 +29,7 @@
 *.hex
 
 brainflayer
+hexln
 hex2blf
 blfchk
 ecmtabgen
