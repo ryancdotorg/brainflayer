@@ -1,5 +1,8 @@
 HEADERS = bloom.h crack.h hash160.h warpwallet.h
-OBJECTS = brainflayer.o bloom.o hex2blf.o warpwallet.o hex.o mmapf.o hsearchf.o
+OBJ_MAIN = brainflayer.o hex2blf.o blfchk.o ecmtabgen.o
+OBJ_UTIL = hex.o bloom.o mmapf.o hsearchf.o ec_pubkey_fast.o
+OBJ_FMT = warpwallet.o brainwalletio.o brainv2.o
+OBJECTS = $(OBJ_MAIN) $(OBJ_UTIL) $(OBJ_FMT)
 BINARIES = brainflayer hex2blf blfchk ecmtabgen
 LIBS = -lssl -lrt -lcrypto -lz -ldl -lgmp
 CFLAGS = -O3 -flto -pedantic -std=gnu99 -Wall -Wextra -funsigned-char -Wno-pointer-sign -Wno-sign-compare
@@ -42,10 +45,11 @@ blfchk: blfchk.o hex.o bloom.o mmapf.o hsearchf.o
 hex2blf: hex2blf.o hex.o bloom.o mmapf.o
 	$(COMPILE) -static $^ $(LIBS) -o $@
 
-ecmtabgen: ecmtabgen.o mmapf.o ec_pubkey_fast.o secp256k1/.libs/libsecp256k1.a
+ecmtabgen: ecmtabgen.o mmapf.o ec_pubkey_fast.o
 	$(COMPILE) -static $^ $(LIBS) -o $@
 
-brainflayer: brainflayer.o hex.o bloom.o mmapf.o hsearchf.o warpwallet.o brainwalletio.o brainv2.o ec_pubkey_fast.o secp256k1/.libs/libsecp256k1.a scrypt-jane/scrypt-jane.o
+brainflayer: brainflayer.o $(OBJ_UTIL) $(OBJ_FMT) \
+             secp256k1/.libs/libsecp256k1.a scrypt-jane/scrypt-jane.o
 	$(COMPILE) -static $^ $(LIBS) -o $@
 
 clean:
