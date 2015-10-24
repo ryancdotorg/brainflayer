@@ -487,8 +487,8 @@ int main(int argc, char **argv) {
 
   /* line buffer output */
   setvbuf(ofile,  NULL, _IOLBF, 0);
-  /* don't buffer stderr */
-  setvbuf(stderr, NULL, _IONBF, 0);
+  /* line buffer stderr */
+  setvbuf(stderr, NULL, _IOLBF, 0);
 
   brainflayer_init_globals();
   secp256k1_ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);
@@ -519,14 +519,14 @@ int main(int argc, char **argv) {
       if (bloom) {
         if (bloom_chk_hash160(bloom, hash160_uncmp.ul)) {
           if (!fopt || hsearchf(ffile, &hash160_uncmp)) {
-            if (vopt && ofile == stdout) fprintf(ofile, "\033[0K");
+            if (vopt && ofile == stdout && isatty(fileno(stdout))) fprintf(ofile, "\033[0K");
             fprintresult(ofile, &hash160_uncmp, 'u', topt, line);
             ++olines;
           }
         }
         if (bloom_chk_hash160(bloom, hash160_compr.ul)) {
           if (!fopt || hsearchf(ffile, &hash160_compr)) {
-            if (vopt && ofile == stdout) fprintf(ofile, "\033[0K");
+            if (vopt && ofile == stdout && isatty(fileno(stdout))) fprintf(ofile, "\033[0K");
             fprintresult(ofile, &hash160_compr, 'c', topt, line);
             ++olines;
           }
@@ -550,36 +550,42 @@ int main(int argc, char **argv) {
         time_last = time_curr;
         ilines_delta = ilines_curr - ilines_last;
         ilines_last = ilines_curr;
-        ilines_rate = (ilines_delta * 1000000000.0) / (time_delta * 1.0);
-        if (ilines_rate_avg < 0) {
+        ilines_rate = (ilines_delta * 1.0e9) / (time_delta * 1.0);
+
+        if (line_read < 0) {
+          /* report overall average on last status update */
+          ilines_rate_avg = (--ilines_curr * 1.0e9) / (time_elapsed * 1.0);
+        } else if (ilines_rate_avg < 0) {
           ilines_rate_avg = ilines_rate;
-        } else {
-          /* exponetial moving average */
-          ilines_rate_avg = alpha * ilines_rate + (1 - alpha) * ilines_rate_avg;
-        }
         /* target reporting frequency to about once every five seconds */
-        if (time_delta < 2500000000) {
+        } else if (time_delta < 2500000000) {
           report_mask = (report_mask << 1) | 1;
           ilines_rate_avg = ilines_rate; /* reset EMA */
         } else if (time_delta > 10000000000) {
           report_mask >>= 1;
           ilines_rate_avg = ilines_rate; /* reset EMA */
+        } else {
+          /* exponetial moving average */
+          ilines_rate_avg = alpha * ilines_rate + (1 - alpha) * ilines_rate_avg;
         }
+
         fprintf(stderr,
             "\033[0G\033[2K"
-            " rate: %9.2f c/s"
+            " rate: %9.2f p/s"
             " found: %5zu/%-10zu"
-            " elapsed: %8.3fs"
+            " elapsed: %8.3f s"
             "\033[0G",
             ilines_rate_avg,
             olines,
             ilines_curr,
-            time_elapsed / 1000000000.0
+            time_elapsed / 1.0e9
         );
-        fflush(stderr);
+
         if (line_read < 0) {
           fprintf(stderr, "\n");
           break;
+        } else {
+          fflush(stderr);
         }
       }
     }
