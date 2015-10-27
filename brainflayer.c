@@ -21,8 +21,6 @@
 #include <sys/types.h>
 #include <sys/sysinfo.h>
 
-#include "secp256k1/include/secp256k1.h"
-
 #include "ripemd160_256.h"
 
 #include "ec_pubkey_fast.h"
@@ -52,9 +50,6 @@ static unsigned char hexed[4096], unhexed[4096];
 
 static SHA256_CTX    *sha256_ctx;
 
-static secp256k1_context_t *secp256k1_ctx;
-static secp256k1_pubkey_t *pubkey;
-
 #define bail(code, ...) \
 do { \
   fprintf(stderr, __VA_ARGS__); \
@@ -78,8 +73,6 @@ static inline void brainflayer_init_globals() {
 
     /* initialize hashs */
     sha256_ctx    = malloc(sizeof(*sha256_ctx));
-    /* initialize pubkey struct */
-    pubkey = malloc(sizeof(*pubkey));
 
     /* set the flag */
     brainflayer_is_init = 1;
@@ -87,20 +80,10 @@ static inline void brainflayer_init_globals() {
 }
 
 inline static int priv2hash160(unsigned char *priv) {
-  //brainflayer_init_globals();
-
   unsigned char *pub_chr = mem;
   int pub_chr_sz;
 
   secp256k1_ec_pubkey_create_precomp(pub_chr, &pub_chr_sz, priv);
-
-#if 0
-  int i = 0;
-  for (i = 0; i < pub_chr_sz; i++) {
-    printf("%02x", pub_chr[i]);
-  }
-  printf("\n");
-#endif
 
   /* compute hash160 for uncompressed public key */
   /* sha256(pub) */
@@ -125,8 +108,6 @@ inline static int priv2hash160(unsigned char *priv) {
 }
 
 static int pass2hash160(unsigned char *pass, size_t pass_sz) {
-  //brainflayer_init_globals();
-
   /* privkey = sha256(passphrase) */
   SHA256_Init(sha256_ctx);
   SHA256_Update(sha256_ctx, pass, pass_sz);
@@ -480,7 +461,6 @@ int main(int argc, char **argv) {
   setvbuf(stderr, NULL, _IOLBF, 0);
 
   brainflayer_init_globals();
-  secp256k1_ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);
 
   if (secp256k1_ec_pubkey_precomp_table(wopt, mopt) != 0) {
     bail(1, "failed to initialize precomputed table\n");
