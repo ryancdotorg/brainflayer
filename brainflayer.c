@@ -14,8 +14,6 @@
 #include <openssl/ripemd.h>
 #include <openssl/obj_mac.h>
 
-#include <arpa/inet.h> /* for ntohl/htonl */
-
 #include <sys/time.h>
 #include <sys/wait.h>
 #include <sys/types.h>
@@ -46,7 +44,11 @@ static unsigned char *mem;
 static mmapf_ctx bloom_mmapf;
 static unsigned char *bloom = NULL;
 
-static unsigned char hexed[4096], unhexed[4096];
+static unsigned char hexed0[41];
+static unsigned char hexed1[41];
+static unsigned char hexed2[65];
+
+static unsigned char unhexed[4096];
 
 static SHA256_CTX    *sha256_ctx;
 
@@ -181,12 +183,8 @@ inline static void fprintresult(FILE *f, hash160_t *hash,
                                 unsigned char compressed,
                                 unsigned char *type,
                                 unsigned char *input) {
-  fprintf(f, "%08x%08x%08x%08x%08x:%c:%s:%s\n",
-          ntohl(hash->ul[0]),
-          ntohl(hash->ul[1]),
-          ntohl(hash->ul[2]),
-          ntohl(hash->ul[3]),
-          ntohl(hash->ul[4]),
+  fprintf(f, "%s:%c:%s:%s\n",
+          hex(hash->uc, 20, hexed0, sizeof(hexed0)),
           compressed,
           type,
           input);
@@ -198,18 +196,10 @@ inline static void fprintlookup(FILE *f,
                                 unsigned char *priv,
                                 unsigned char *type,
                                 unsigned char *input) {
-  fprintf(f, "%08x%08x%08x%08x%08x:%08x%08x%08x%08x%08x:%s:%s:%s\n",
-          ntohl(hashu->ul[0]),
-          ntohl(hashu->ul[1]),
-          ntohl(hashu->ul[2]),
-          ntohl(hashu->ul[3]),
-          ntohl(hashu->ul[4]),
-          ntohl(hashc->ul[0]),
-          ntohl(hashc->ul[1]),
-          ntohl(hashc->ul[2]),
-          ntohl(hashc->ul[3]),
-          ntohl(hashc->ul[4]),
-          hex(priv, 32, hexed, sizeof(hexed)),
+  fprintf(f, "%s:%s:%s:%s:%s\n",
+          hex(hashu->uc, 20, hexed0, sizeof(hexed0)),
+          hex(hashc->uc, 20, hexed1, sizeof(hexed1)),
+          hex(priv, 32, hexed2, sizeof(hexed2)),
           type,
           input);
 }
