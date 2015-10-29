@@ -139,7 +139,11 @@ static int pass2hash160(unsigned char *pass, size_t pass_sz) {
 }
 
 static int hexpass2hash160(unsigned char *hpass, size_t hpass_sz) {
-  return pass2hash160(unhex(hpass, hpass_sz, unhexed, sizeof(unhexed)), hpass_sz>>1);
+  if (hpass_sz / 2 > unhexed_sz) {
+    unhexed_sz = hpass_sz * 3;
+    unhexed = chkrealloc(unhexed, unhexed_sz);
+  }
+  return pass2hash160(unhex(hpass, hpass_sz, unhexed, unhexed_sz), hpass_sz>>1);
 }
 
 static int hexpriv2hash160(unsigned char *hpriv, size_t hpriv_sz) {
