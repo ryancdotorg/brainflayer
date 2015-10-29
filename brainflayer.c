@@ -48,7 +48,8 @@ static unsigned char hexed0[41];
 static unsigned char hexed1[41];
 static unsigned char hexed2[65];
 
-static unsigned char unhexed[4096];
+static unsigned char *unhexed = NULL;
+static size_t unhexed_sz = 4096;
 
 static SHA256_CTX    *sha256_ctx;
 
@@ -57,6 +58,24 @@ do { \
   fprintf(stderr, __VA_ARGS__); \
   exit(code); \
 } while (0)
+
+#define chkmalloc(S) _chkmalloc(S, __FILE__, __LINE__)
+static void * _chkmalloc(size_t size, unsigned char *file, unsigned int line) {
+  void *ptr = malloc(size);
+  if (ptr == NULL) {
+    bail(1, "malloc(%zu) failed at %s:%u: %s\n", size, file, line, strerror(errno));
+  }
+  return ptr;
+}
+
+#define chkrealloc(P, S) _chkrealloc(P, S, __FILE__, __LINE__);
+static void * _chkrealloc(void *ptr, size_t size, unsigned char *file, unsigned int line) {
+  void *ptr2 = realloc(ptr, size);
+  if (ptr2 == NULL) {
+    bail(1, "realloc(%p, %zu) failed at %s:%u: %s\n", ptr, size, file, line, strerror(errno));
+  }
+  return ptr2;
+}
 
 uint64_t getns() {
   uint64_t ns;
@@ -71,10 +90,11 @@ static inline void brainflayer_init_globals() {
   /* only initialize stuff once */
   if (!brainflayer_is_init) {
     /* initialize buffers */
-    mem = malloc(4096);
+    mem = chkmalloc(4096);
+    unhexed = chkmalloc(unhexed_sz);
 
     /* initialize hashs */
-    sha256_ctx    = malloc(sizeof(*sha256_ctx));
+    sha256_ctx = chkmalloc(sizeof(*sha256_ctx));
 
     /* set the flag */
     brainflayer_is_init = 1;
@@ -400,7 +420,7 @@ int main(int argc, char **argv) {
         kdfsalt = sopt;
         kdfsalt_sz = strlen(kdfsalt);
       } else {
-        kdfsalt = malloc(0);
+        kdfsalt = chkmalloc(0);
         kdfsalt_sz = 0;
       }
     }
