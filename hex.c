@@ -11,7 +11,7 @@ hex(unsigned char *buf, size_t buf_sz,
   int i, j;
   --hexed_sz;
   for (i = j = 0; i < buf_sz && j < hexed_sz; ++i, j += 2) {
-    sprintf(hexed+j, "%02x", buf[i]);
+    snprintf(hexed+j, 3, "%02x", buf[i]);
   }
   hexed[j] = 0; // null terminate
   return hexed;
