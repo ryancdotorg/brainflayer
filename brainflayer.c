@@ -498,27 +498,28 @@ int main(int argc, char **argv) {
         if (nopt_mod && raw_lines % nopt_mod != nopt_rem) { continue; }
       }
       line[line_read] = 0;
-      input2hash160(line, line_read);
-      if (bloom) {
-        if (bloom_chk_hash160(bloom, hash160_uncmp.ul)) {
-          if (!fopt || hsearchf(ffile, &hash160_uncmp)) {
-            if (vopt && ofile == stdout && isatty(fileno(stdout))) fprintf(ofile, "\033[0K");
-            fprintresult(ofile, &hash160_uncmp, 'u', topt, line);
-            ++olines;
+      if (input2hash160(line, line_read) == 0) {
+        if (bloom) {
+          if (bloom_chk_hash160(bloom, hash160_uncmp.ul)) {
+            if (!fopt || hsearchf(ffile, &hash160_uncmp)) {
+              if (vopt && ofile == stdout && isatty(fileno(stdout))) fprintf(ofile, "\033[0K");
+              fprintresult(ofile, &hash160_uncmp, 'u', topt, line);
+              ++olines;
+            }
           }
-        }
-        if (bloom_chk_hash160(bloom, hash160_compr.ul)) {
-          if (!fopt || hsearchf(ffile, &hash160_compr)) {
-            if (vopt && ofile == stdout && isatty(fileno(stdout))) fprintf(ofile, "\033[0K");
-            fprintresult(ofile, &hash160_compr, 'c', topt, line);
-            ++olines;
+          if (bloom_chk_hash160(bloom, hash160_compr.ul)) {
+            if (!fopt || hsearchf(ffile, &hash160_compr)) {
+              if (vopt && ofile == stdout && isatty(fileno(stdout))) fprintf(ofile, "\033[0K");
+              fprintresult(ofile, &hash160_compr, 'c', topt, line);
+              ++olines;
+            }
           }
+        } else if (Lopt) {
+          fprintlookup(ofile, &hash160_uncmp, &hash160_compr, priv256, topt, line);
+        } else {
+          fprintresult(ofile, &hash160_uncmp, 'u', topt, line);
+          fprintresult(ofile, &hash160_compr, 'c', topt, line);
         }
-      } else if (Lopt) {
-        fprintlookup(ofile, &hash160_uncmp, &hash160_compr, priv256, topt, line);
-      } else {
-        fprintresult(ofile, &hash160_uncmp, 'u', topt, line);
-        fprintresult(ofile, &hash160_compr, 'c', topt, line);
       }
     } else {
       if (!vopt) break;
