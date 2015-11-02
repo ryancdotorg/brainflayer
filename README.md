@@ -74,9 +74,13 @@ deterministic wallet schemes via an external program
 
 * `-t bwio` salts or passwords/passphrases for brainwallet.io
 
-* `-t bv2` salts or passwords/passphrases for brainv2 - this one is *very* slow
-           on CPU, however the parameter choices make it a great target for GPUs
-           and FPGAs
+* `-t bv2`  salts or passwords/passphrases for brainv2 - this one is *very* slow
+            on CPU, however the parameter choices make it a great target for GPUs
+            and FPGAs
+
+* `-t rush` passwords for password-protected rushwallets - pass the fragment (the
+            part of the url after the #) using `-r`. Almost all wrong passwords
+            will be rejected even without a bloom filter.
 
 See the output of `brainflayer -h` for more detailed usage info.
 

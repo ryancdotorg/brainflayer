@@ -200,6 +200,28 @@ static int brainv2salt2hash160(unsigned char *salt, size_t salt_sz) {
   return pass2hash160(hexout, sizeof(hexout)-1);
 }
 
+static unsigned char rushchk[5];
+static int rush2hash160(unsigned char *pass, size_t pass_sz) {
+  unsigned char userpasshash[SHA256_DIGEST_LENGTH*2+1];
+
+  SHA256_Init(sha256_ctx);
+  SHA256_Update(sha256_ctx, pass, pass_sz);
+  SHA256_Final(hash256, sha256_ctx);
+
+  hex(hash256, sizeof(hash256), userpasshash, sizeof(userpasshash));
+
+  SHA256_Init(sha256_ctx);
+  // kdfsalt should be the fragment up to the !
+  SHA256_Update(sha256_ctx, kdfsalt, kdfsalt_sz);
+  SHA256_Update(sha256_ctx, userpasshash, 64);
+  SHA256_Final(priv256, sha256_ctx);
+
+  // early exit if the checksum doesn't match
+  if (memcmp(priv256, rushchk, sizeof(rushchk)) != 0) { return -1; }
+
+  return priv2hash160(priv256);
+}
+
 // function pointer
 static int (*input2hash160)(unsigned char *, size_t);
 
@@ -243,9 +265,11 @@ void usage(unsigned char *name) {
                              warp - WarpWallet (supports -s or -p)\n\
                              bwio - brainwallet.io (supports -s or -p)\n\
                              bv2  - brainv2 (supports -s or -p) VERY SLOW\n\
+                             rush - rushwallet (needs -r) FAST\n\
  -s SALT                     use SALT for salted input types (default: none)\n\
  -p PASSPHRASE               use PASSPHRASE for salted input types, inputs\n\
                              will be treated as salts\n\
+ -r FRAGMENT                 use FRAGMENT for cracking rushwallet passphrase\n\
  -k K                        skip the first K lines of input\n\
  -n K/N                      use only the Kth of every N input lines\n\
  -w WINDOW_SIZE              window size for ecmult table (default: 16)\n\
@@ -285,9 +309,9 @@ int main(int argc, char **argv) {
   uint64_t kopt = 0;
   unsigned char *bopt = NULL, *iopt = NULL, *oopt = NULL;
   unsigned char *topt = NULL, *sopt = NULL, *popt = NULL;
-  unsigned char *mopt = NULL, *fopt = NULL;
+  unsigned char *mopt = NULL, *fopt = NULL, *ropt = NULL;
 
-  while ((c = getopt(argc, argv, "avb:hi:k:f:m:n:o:p:s:t:w:L")) != -1) {
+  while ((c = getopt(argc, argv, "avb:hi:k:f:m:n:o:p:s:r:t:w:L")) != -1) {
     switch (c) {
       case 'a':
         aopt = 1; // open output file in append mode
@@ -330,6 +354,9 @@ int main(int argc, char **argv) {
         break;
       case 'p':
         popt = optarg; // passphrase
+        break;
+      case 'r':
+        ropt = optarg; // rushwallet
         break;
       case 't':
         topt = optarg; // type of input
@@ -404,6 +431,8 @@ int main(int argc, char **argv) {
     } else if (strcmp(topt, "bv2") == 0) {
       spok = 1;
       input2hash160 = popt ? &brainv2salt2hash160 : &brainv2pass2hash160;
+    } else if (strcmp(topt, "rush") == 0) {
+      input2hash160 = &rush2hash160;
     } else {
       bail(1, "Unknown input type '%s'.\n", topt);
     }
@@ -434,6 +463,21 @@ int main(int argc, char **argv) {
     } else if (sopt) {
       bail(1, "Specifying a salt not supported with this input type '%s'\n", topt);
     }
+  }
+
+  if (ropt) {
+    if (input2hash160 != &rush2hash160) {
+      bail(1, "Specifying a url fragment only supported with input type 'rush'\n");
+    }
+    kdfsalt = ropt;
+    kdfsalt_sz = strlen(kdfsalt) - sizeof(rushchk)*2;
+    if (kdfsalt[kdfsalt_sz-1] != '!') {
+      bail(1, "Invalid rushwallet url fragment '%s'\n", kdfsalt);
+    }
+    unhex(kdfsalt+kdfsalt_sz, sizeof(rushchk)*2, rushchk, sizeof(rushchk));
+    kdfsalt[kdfsalt_sz] = '\0';
+  } else if (input2hash160 == &rush2hash160) {
+    bail(1, "The '-r' option is required for rushwallet.\n");
   }
 
   if (bopt) {
