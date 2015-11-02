@@ -274,7 +274,7 @@ int main(int argc, char **argv) {
   uint64_t ilines_last, ilines_curr, ilines_delta;
   uint64_t olines;
 
-  int skipping = 0;
+  int skipping = 0, tty = 0;
 
   char *line = NULL;
   size_t line_sz = 0;
@@ -474,6 +474,8 @@ int main(int argc, char **argv) {
   /* line buffer stderr */
   setvbuf(stderr, NULL, _IOLBF, 0);
 
+  if (vopt && ofile == stdout && isatty(fileno(stdout))) { tty = 1; }
+
   brainflayer_init_globals();
 
   if (secp256k1_ec_pubkey_precomp_table(wopt, mopt) != 0) {
@@ -502,14 +504,14 @@ int main(int argc, char **argv) {
         if (bloom) {
           if (bloom_chk_hash160(bloom, hash160_uncmp.ul)) {
             if (!fopt || hsearchf(ffile, &hash160_uncmp)) {
-              if (vopt && ofile == stdout && isatty(fileno(stdout))) fprintf(ofile, "\033[0K");
+              if (tty) { fprintf(ofile, "\033[0K"); }
               fprintresult(ofile, &hash160_uncmp, 'u', topt, line);
               ++olines;
             }
           }
           if (bloom_chk_hash160(bloom, hash160_compr.ul)) {
             if (!fopt || hsearchf(ffile, &hash160_compr)) {
-              if (vopt && ofile == stdout && isatty(fileno(stdout))) fprintf(ofile, "\033[0K");
+              if (tty) { fprintf(ofile, "\033[0K"); }
               fprintresult(ofile, &hash160_compr, 'c', topt, line);
               ++olines;
             }
