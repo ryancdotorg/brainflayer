@@ -49,7 +49,7 @@ blfchk: blfchk.o hex.o bloom.o mmapf.o hsearchf.o
 	$(COMPILE) -static $^ $(LIBS) -o $@
 
 hex2blf: hex2blf.o hex.o bloom.o mmapf.o
-	$(COMPILE) -static $^ $(LIBS) -o $@
+	$(COMPILE) -static $^ $(LIBS) -lm -o $@
 
 ecmtabgen: ecmtabgen.o mmapf.o ec_pubkey_fast.o
 	$(COMPILE) -static $^ $(LIBS) -o $@
