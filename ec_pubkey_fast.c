@@ -287,4 +287,71 @@ int secp256k1_ec_pubkey_create_precomp(unsigned char *pub_chr, int *pub_chr_sz, 
 
   return 0;
 }
+
+void priv_add_uint8(unsigned char *priv, unsigned char add) {
+  int p = 31;
+  priv[p] += add;
+  if (priv[p] < add) {
+    priv[--p] += 1;
+    while (p) {
+      if (priv[p] == 0) {
+        priv[--p] += 1;
+      } else {
+        break;
+      }
+    }
+  }
+}
+
+typedef struct {
+  secp256k1_gej_t pubj;
+  secp256k1_ge_t  inc;
+  secp256k1_gej_t incj;
+  unsigned char n;
+} pubkey_incr_t;
+
+pubkey_incr_t pubkey_incr_ctx;
+
+int secp256k1_ec_pubkey_incr_init(unsigned char *seckey, unsigned char add) {
+  unsigned char incr_priv[32];
+  memset(incr_priv, 0, sizeof(incr_priv));
+  memset(&pubkey_incr_ctx, 0, sizeof(pubkey_incr_ctx));
+  priv_add_uint8(incr_priv, add);
+
+  pubkey_incr_ctx.n = add;
+
+#ifdef USE_BL_ARITHMETIC
+  secp256k1_ecmult_gen_bl(&pubkey_incr_ctx.pubj, seckey);
+  secp256k1_ecmult_gen_bl(&pubkey_incr_ctx.incj, incr_priv);
+#else
+  secp256k1_ecmult_gen2(&pubkey_incr_ctx.pubj, seckey);
+  secp256k1_ecmult_gen2(&pubkey_incr_ctx.incj, incr_priv);
+#endif
+  secp256k1_ge_set_gej(&pubkey_incr_ctx.inc, &pubkey_incr_ctx.incj);
+
+  return 0;
+}
+
+int secp256k1_ec_pubkey_incr(unsigned char *pub_chr, int *pub_chr_sz, unsigned char *seckey) {
+  secp256k1_ge_t p;
+
+  priv_add_uint8(seckey, pubkey_incr_ctx.n);
+#ifdef USE_BL_ARITHMETIC
+  secp256k1_gej_add_ge_bl(&pubkey_incr_ctx.pubj, &pubkey_incr_ctx.pubj, &pubkey_incr_ctx.inc, NULL);
+#else
+  secp256k1_gej_add_ge_var(&pubkey_incr_ctx.pubj, &pubkey_incr_ctx.pubj, &pubkey_incr_ctx.inc, NULL);
+#endif
+
+  secp256k1_ge_set_gej(&p, &pubkey_incr_ctx.pubj);
+
+  *pub_chr_sz = 65;
+  pub_chr[0] = 4;
+
+  secp256k1_fe_normalize_var(&p.x);
+  secp256k1_fe_normalize_var(&p.y);
+  secp256k1_fe_get_b32(pub_chr +  1, &p.x);
+  secp256k1_fe_get_b32(pub_chr + 33, &p.y);
+
+  return 0;
+}
 /*  vim: set ts=2 sw=2 et ai si: */
