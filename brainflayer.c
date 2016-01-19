@@ -99,12 +99,7 @@ static inline void brainflayer_init_globals() {
   }
 }
 
-inline static int priv2hash160(unsigned char *priv) {
-  unsigned char *pub_chr = mem;
-  int pub_chr_sz;
-
-  secp256k1_ec_pubkey_create_precomp(pub_chr, &pub_chr_sz, priv);
-
+inline static int pub2hash160(unsigned char *pub_chr) {
   /* compute hash160 for uncompressed public key */
   /* sha256(pub) */
   SHA256_Init(sha256_ctx);
@@ -125,6 +120,24 @@ inline static int priv2hash160(unsigned char *priv) {
   ripemd160_256(hash256, hash160_compr.uc);
 
   return 0;
+}
+
+inline static int priv_incr(unsigned char *priv) {
+  unsigned char *pub_chr = mem;
+  int pub_chr_sz;
+
+  secp256k1_ec_pubkey_incr(pub_chr, &pub_chr_sz, priv);
+
+  return pub2hash160(pub_chr);
+}
+
+inline static int priv2hash160(unsigned char *priv) {
+  unsigned char *pub_chr = mem;
+  int pub_chr_sz;
+
+  secp256k1_ec_pubkey_create_precomp(pub_chr, &pub_chr_sz, priv);
+
+  return pub2hash160(pub_chr);
 }
 
 static int pass2hash160(unsigned char *pass, size_t pass_sz) {
@@ -300,7 +313,7 @@ int main(int argc, char **argv) {
 
   char *line = NULL;
   size_t line_sz = 0;
-  int line_read;
+  int line_read = 0;
 
   int c, spok = 0, aopt = 0, vopt = 0, wopt = 16, Lopt = 0;
   int nopt_mod = 0, nopt_rem = 0;
@@ -308,8 +321,9 @@ int main(int argc, char **argv) {
   unsigned char *bopt = NULL, *iopt = NULL, *oopt = NULL;
   unsigned char *topt = NULL, *sopt = NULL, *popt = NULL;
   unsigned char *mopt = NULL, *fopt = NULL, *ropt = NULL;
+  unsigned char *Iopt = NULL;
 
-  while ((c = getopt(argc, argv, "avb:hi:k:f:m:n:o:p:s:r:t:w:L")) != -1) {
+  while ((c = getopt(argc, argv, "avb:hi:k:f:m:n:o:p:s:r:t:w:I:L")) != -1) {
     switch (c) {
       case 'a':
         aopt = 1; // open output file in append mode
@@ -358,6 +372,9 @@ int main(int argc, char **argv) {
         break;
       case 't':
         topt = optarg; // type of input
+        break;
+      case 'I':
+        Iopt = optarg; // start key for incremental
         break;
       case 'L':
         Lopt = 1; // lookup output
@@ -478,6 +495,14 @@ int main(int argc, char **argv) {
     bail(1, "The '-r' option is required for rushwallet.\n");
   }
 
+  if (Iopt) {
+    topt = "priv";
+    line = Iopt;
+    unhex(Iopt, sizeof(priv256)*2, priv256, sizeof(priv256));
+    skipping = 1;
+    if (!nopt_mod) { nopt_mod = 1; };
+  }
+
   if (bopt) {
     if (Lopt) {
       bail(1, "The '-L' option cannot be used with a bloom filter\n");
@@ -535,40 +560,56 @@ int main(int argc, char **argv) {
   }
 
   for (;;) {
-    if ((line_read = getline(&line, &line_sz, ifile)-1) > -1) {
+    if (Iopt) {
+      if (!skipping) {
+        priv_incr(priv256);
+      } else {
+        priv_add_uint32(priv256, nopt_rem);
+        secp256k1_ec_pubkey_incr_init(priv256, nopt_mod);
+        priv2hash160(priv256);
+        skipping = 0;
+        line_read = 1;
+      }
+    } else if ((line_read = getline(&line, &line_sz, ifile)-1) > -1) {
       if (skipping) {
         ++raw_lines;
         if (kopt && raw_lines < kopt) { continue; }
         if (nopt_mod && raw_lines % nopt_mod != nopt_rem) { continue; }
       }
       line[line_read] = 0;
-      if (input2hash160(line, line_read) == 0) {
-        if (bloom) {
-          if (bloom_chk_hash160(bloom, hash160_uncmp.ul)) {
-            if (!fopt || hsearchf(ffile, &hash160_uncmp)) {
-              if (tty) { fprintf(ofile, "\033[0K"); }
-              fprintresult(ofile, &hash160_uncmp, 'u', topt, line);
-              ++olines;
-            }
-          }
-          if (bloom_chk_hash160(bloom, hash160_compr.ul)) {
-            if (!fopt || hsearchf(ffile, &hash160_compr)) {
-              if (tty) { fprintf(ofile, "\033[0K"); }
-              fprintresult(ofile, &hash160_compr, 'c', topt, line);
-              ++olines;
-            }
-          }
-        } else if (Lopt) {
-          fprintlookup(ofile, &hash160_uncmp, &hash160_compr, priv256, topt, line);
-        } else {
-          fprintresult(ofile, &hash160_uncmp, 'u', topt, line);
-          fprintresult(ofile, &hash160_compr, 'c', topt, line);
-        }
+      if (input2hash160(line, line_read) != 0) {
+        goto loop_update_stats;
       }
     } else {
       if (!vopt) break;
+      goto loop_update_stats;
     }
 
+    if (bloom) {
+      if (bloom_chk_hash160(bloom, hash160_uncmp.ul)) {
+        if (!fopt || hsearchf(ffile, &hash160_uncmp)) {
+          if (tty) { fprintf(ofile, "\033[0K"); }
+          if (Iopt) { hex(priv256, 32, line, 65); }
+          fprintresult(ofile, &hash160_uncmp, 'u', topt, line);
+          ++olines;
+        }
+      }
+      if (bloom_chk_hash160(bloom, hash160_compr.ul)) {
+        if (!fopt || hsearchf(ffile, &hash160_compr)) {
+          if (tty) { fprintf(ofile, "\033[0K"); }
+          if (Iopt) { hex(priv256, 32, line, 65); }
+          fprintresult(ofile, &hash160_compr, 'c', topt, line);
+          ++olines;
+        }
+      }
+    } else if (Lopt) {
+      fprintlookup(ofile, &hash160_uncmp, &hash160_compr, priv256, topt, line);
+    } else {
+      fprintresult(ofile, &hash160_uncmp, 'u', topt, line);
+      fprintresult(ofile, &hash160_compr, 'c', topt, line);
+    }
+
+loop_update_stats:
     if (vopt) {
       ++ilines_curr;
       if (line_read < 0 || (ilines_curr & report_mask) == 0) {
