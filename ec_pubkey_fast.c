@@ -288,8 +288,7 @@ int secp256k1_ec_pubkey_create_precomp(unsigned char *pub_chr, int *pub_chr_sz, 
   return 0;
 }
 
-void priv_add_uint8(unsigned char *priv, unsigned char add) {
-  int p = 31;
+inline static void _priv_add(unsigned char *priv, unsigned char add, int p) {
   priv[p] += add;
   if (priv[p] < add) {
     priv[--p] += 1;
@@ -303,20 +302,32 @@ void priv_add_uint8(unsigned char *priv, unsigned char add) {
   }
 }
 
+void priv_add_uint8(unsigned char *priv, unsigned char add) {
+  _priv_add(priv, add, 31);
+}
+
+void priv_add_uint32(unsigned char *priv, unsigned int add) {
+  int p = 31;
+  while (add) {
+    _priv_add(priv, add & 255, p--);
+    add >>= 8;
+  }
+}
+
 typedef struct {
   secp256k1_gej_t pubj;
   secp256k1_ge_t  inc;
   secp256k1_gej_t incj;
-  unsigned char n;
+  unsigned int n;
 } pubkey_incr_t;
 
 pubkey_incr_t pubkey_incr_ctx;
 
-int secp256k1_ec_pubkey_incr_init(unsigned char *seckey, unsigned char add) {
+int secp256k1_ec_pubkey_incr_init(unsigned char *seckey, unsigned int add) {
   unsigned char incr_priv[32];
   memset(incr_priv, 0, sizeof(incr_priv));
   memset(&pubkey_incr_ctx, 0, sizeof(pubkey_incr_ctx));
-  priv_add_uint8(incr_priv, add);
+  priv_add_uint32(incr_priv, add);
 
   pubkey_incr_ctx.n = add;
 
@@ -335,7 +346,7 @@ int secp256k1_ec_pubkey_incr_init(unsigned char *seckey, unsigned char add) {
 int secp256k1_ec_pubkey_incr(unsigned char *pub_chr, int *pub_chr_sz, unsigned char *seckey) {
   secp256k1_ge_t p;
 
-  priv_add_uint8(seckey, pubkey_incr_ctx.n);
+  priv_add_uint32(seckey, pubkey_incr_ctx.n);
 #ifdef USE_BL_ARITHMETIC
   secp256k1_gej_add_ge_bl(&pubkey_incr_ctx.pubj, &pubkey_incr_ctx.pubj, &pubkey_incr_ctx.inc, NULL);
 #else
