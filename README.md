@@ -63,7 +63,17 @@ run two copies per physical core. Also worth noting is that brainflayer mmaps
 its data files in shared memory, so additional brainflayer processes do not
 use up that much additional RAM.
 
-Brainflayer supports a few other types of input via the `-t` option.
+While not strictly required, it is *highly* recommended to use the following
+options:
+
+* `-m FILE` Load the ecmult table from `FILE` (generated with `ecmtabgen`)
+            rather than computing it on startup.
+
+* `-f FILE` Verify check bloom filter matches against `FILE`, a list of all
+            hash160s generated with
+            `sort -u example.hex | xxd -r -p > example.bin`
+
+Brainflayer supports a few other types of input via the `-t` option:
 
 * `-t hex`  hex encoded passwords/passphrases - will be decoded by brainflayer
             for key derivation
