@@ -53,22 +53,27 @@ Brainflayer's design is heavily influenced by [Unix philosophy](https://en.wikip
 It (mostly) does one thing: hunt for tasty brainwallets. A major feature it
 does *not* have is generating candidate passwords/passphrases. There are plenty
 of other great tools that do that, and brainflayer is happy to have you pipe
-thier output to it.
+their output to it.
 
 Unfortunately, brainflayer is not currently multithreaded. If you want to have
 it keep multiple cores busy, you'll have to come up with a way to distribute
-the work yourself. In my testing, brainflayer benifits significantly from
-hyperthreading, so you may want to run two copies per physical core. Also
-worth noting is that brainflayer mmaps the bloom filter file in shared memory,
-so additional brainflayer processes do not use up that much additional RAM.
+the work yourself (brainflayer's -n and -k options may help). In my testing,
+brainflayer benefits significantly from hyperthreading, so you may want to
+run two copies per physical core. Also worth noting is that brainflayer mmaps
+its data files in shared memory, so additional brainflayer processes do not
+use up that much additional RAM.
 
 Brainflayer supports a few other types of input via the `-t` option.
 
-* `-t hex` hex encoded passwords/passphrases - will be decoded by brainflayer
-for key derivation
+* `-t hex`  hex encoded passwords/passphrases - will be decoded by brainflayer
+            for key derivation
 
 * `-t priv` hex encoded private keys - this can be used to support arbitrary
-deterministic wallet schemes via an external program
+            deterministic wallet schemes via an external program. Any trailing
+            data after the hex encoded private key will be included in
+            brainflayer's output as well, for reference. See also the `-I`
+            option if you want to crack a bunch of sequential keys, which has
+            special speed optimizations.
 
 * `-t warp` salts or passwords/passphrases for WarpWallet
 
@@ -76,7 +81,7 @@ deterministic wallet schemes via an external program
 
 * `-t bv2`  salts or passwords/passphrases for brainv2 - this one is *very* slow
             on CPU, however the parameter choices make it a great target for GPUs
-            and FPGAs
+            and FPGAs.
 
 * `-t rush` passwords for password-protected rushwallets - pass the fragment (the
             part of the url after the #) using `-r`. Almost all wrong passwords
