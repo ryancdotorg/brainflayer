@@ -281,6 +281,8 @@ void usage(unsigned char *name) {
  -p PASSPHRASE               use PASSPHRASE for salted input types, inputs\n\
                              will be treated as salts\n\
  -r FRAGMENT                 use FRAGMENT for cracking rushwallet passphrase\n\
+ -I HEXPRIVKEY               incremental private key cracking mode, starting\n\
+                             at HEXPRIVKEY (supports -n) FAST\n\
  -k K                        skip the first K lines of input\n\
  -n K/N                      use only the Kth of every N input lines\n\
  -w WINDOW_SIZE              window size for ecmult table (default: 16)\n\
@@ -430,6 +432,20 @@ int main(int argc, char **argv) {
     }
   }
 
+  if (Iopt) {
+    if (strlen(Iopt) != 64) {
+      bail(1, "The starting key passed to the '-I' must be 64 hex digits exactly\n");
+    }
+    if (topt) {
+      bail(1, "Cannot specify input type in incremental mode\n");
+    }
+    topt = "priv";
+    line = Iopt;
+    unhex(Iopt, sizeof(priv256)*2, priv256, sizeof(priv256));
+    skipping = 1;
+    if (!nopt_mod) { nopt_mod = 1; };
+  }
+
   if (topt != NULL) {
     if (strcmp(topt, "str") == 0) {
       input2hash160 = &pass2hash160;
@@ -493,14 +509,6 @@ int main(int argc, char **argv) {
     kdfsalt[kdfsalt_sz] = '\0';
   } else if (input2hash160 == &rush2hash160) {
     bail(1, "The '-r' option is required for rushwallet.\n");
-  }
-
-  if (Iopt) {
-    topt = "priv";
-    line = Iopt;
-    unhex(Iopt, sizeof(priv256)*2, priv256, sizeof(priv256));
-    skipping = 1;
-    if (!nopt_mod) { nopt_mod = 1; };
   }
 
   if (bopt) {
