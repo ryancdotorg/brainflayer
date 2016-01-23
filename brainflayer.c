@@ -602,11 +602,14 @@ int main(int argc, char **argv) {
           ++olines;
         }
       }
-    } else if (Lopt) {
-      fprintlookup(ofile, &hash160_uncmp, &hash160_compr, priv256, topt, line);
     } else {
-      fprintresult(ofile, &hash160_uncmp, 'u', topt, line);
-      fprintresult(ofile, &hash160_compr, 'c', topt, line);
+      if (Iopt) { hex(priv256, 32, line, 65); }
+      if (Lopt) {
+        fprintlookup(ofile, &hash160_uncmp, &hash160_compr, priv256, topt, line);
+      } else {
+        fprintresult(ofile, &hash160_uncmp, 'u', topt, line);
+        fprintresult(ofile, &hash160_compr, 'c', topt, line);
+      }
     }
 
 loop_update_stats:
