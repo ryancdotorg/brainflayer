@@ -55,6 +55,7 @@ keccakf1600_theta(secret uint64_t A[25])
 	unsigned y;
 
 	C0 = C1 = C2 = C3 = C4 = 0;
+#pragma GCC diagnostic ignored "-pedantic"
 	FOR5(y, {
 		C0 ^= A[0 + 5*y];
 		C1 ^= A[1 + 5*y];
@@ -69,6 +70,7 @@ keccakf1600_theta(secret uint64_t A[25])
 		A[3 + 5*y] ^= C2 ^ rol64(C4, 1);
 		A[4 + 5*y] ^= C3 ^ rol64(C0, 1);
 	});
+#pragma GCC diagnostic pop
 }
 
 static inline void
@@ -113,6 +115,7 @@ keccakf1600_chi(secret uint64_t A[25])
 	secret uint64_t B0, B1, B2, B3, B4;
 	unsigned y;
 
+#pragma GCC diagnostic ignored "-pedantic"
 	FOR5(y, {
 		B0 = A[0 + 5*y];
 		B1 = A[1 + 5*y];
@@ -125,6 +128,7 @@ keccakf1600_chi(secret uint64_t A[25])
 		A[3 + 5*y] ^= ~B4 & B0;
 		A[4 + 5*y] ^= ~B0 & B1;
 	});
+#pragma GCC diagnostic pop
 }
 
 static void

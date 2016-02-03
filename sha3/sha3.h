@@ -71,6 +71,18 @@ void	SHAKE256_Init(SHAKE256_CTX *);
 void	SHAKE256_Update(SHAKE256_CTX *, const uint8_t *, size_t);
 void	SHAKE256_Final(uint8_t *, size_t, SHAKE256_CTX *);
 
+#define KECCAK_256_Init SHA3_256_Init
+#define KECCAK_256_Update SHA3_256_Update
+void	KECCAK_256_Final(uint8_t[SHA3_256_DIGEST_LENGTH], SHA3_256_CTX *);
+
+#define KECCAK_384_Init SHA3_384_Init
+#define KECCAK_384_Update SHA3_384_Update
+void	KECCAK_384_Final(uint8_t[SHA3_384_DIGEST_LENGTH], SHA3_384_CTX *);
+
+#define KECCAK_512_Init SHA3_512_Init
+#define KECCAK_512_Update SHA3_512_Update
+void	KECCAK_512_Final(uint8_t[SHA3_512_DIGEST_LENGTH], SHA3_512_CTX *);
+
 int	SHA3_Selftest(void);
 
 #endif	/* SHA3_H */

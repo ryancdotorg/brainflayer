@@ -182,8 +182,8 @@ partial:
 	assert(0 < C->nb);
 }
 
-static void
-sha3_final(uint8_t *h, unsigned d, struct sha3 *C, unsigned rw)
+static inline void
+sha3_or_keccak_final(uint8_t *h, unsigned d, struct sha3 *C, unsigned rw, uint64_t padding)
 {
 	unsigned nw, iw;
 
@@ -194,7 +194,7 @@ sha3_final(uint8_t *h, unsigned d, struct sha3 *C, unsigned rw)
 	nw = (C->nb + 7)/8;
 	assert(0 < nw);
 	assert(nw <= rw);
-	C->A[rw - nw] ^= (uint64_t)0x06 << (8*(8*nw - C->nb));
+	C->A[rw - nw] ^= padding << (8*(8*nw - C->nb));
 	C->A[rw - 1] ^= 0x8000000000000000ULL;
 
 	/* Permute one last time.  */
@@ -215,6 +215,18 @@ sha3_final(uint8_t *h, unsigned d, struct sha3 *C, unsigned rw)
 	}
 	(void)explicit_memset(C->A, 0, sizeof C->A);
 	C->nb = 0;
+}
+
+static void
+sha3_final(uint8_t *h, unsigned d, struct sha3 *C, unsigned rw)
+{
+    sha3_or_keccak_final(h, d, C, rw, 0x06);
+}
+
+static void
+keccak_final(uint8_t *h, unsigned d, struct sha3 *C, unsigned rw)
+{
+    sha3_or_keccak_final(h, d, C, rw, 0x01);
 }
 
 static void
@@ -396,6 +408,30 @@ SHAKE256_Final(uint8_t *h, size_t d, SHAKE256_CTX *C)
 {
 
 	shake_final(h, d, &C->C256, sha3_rate(256/8));
+}
+
+void
+KECCAK_256_Final(uint8_t h[SHA3_256_DIGEST_LENGTH], SHA3_256_CTX *C)
+{
+
+	keccak_final(h, SHA3_256_DIGEST_LENGTH, &C->C256,
+	    sha3_rate(SHA3_256_DIGEST_LENGTH));
+}
+
+void
+KECCAK_384_Final(uint8_t h[SHA3_384_DIGEST_LENGTH], SHA3_384_CTX *C)
+{
+
+	keccak_final(h, SHA3_384_DIGEST_LENGTH, &C->C384,
+	    sha3_rate(SHA3_384_DIGEST_LENGTH));
+}
+
+void
+KECCAK_512_Final(uint8_t h[SHA3_512_DIGEST_LENGTH], SHA3_512_CTX *C)
+{
+
+	keccak_final(h, SHA3_512_DIGEST_LENGTH, &C->C512,
+	    sha3_rate(SHA3_512_DIGEST_LENGTH));
 }
 
 static void
