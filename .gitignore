@@ -33,6 +33,7 @@ hexln
 hex2blf
 blfchk
 ecmtabgen
+filehex
 
 # Debug files
 *.dSYM/
