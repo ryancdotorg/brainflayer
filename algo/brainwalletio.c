@@ -15,9 +15,9 @@
 // crypto.h used for the version
 #include <openssl/crypto.h>
 
-#include "scrypt-jane/scrypt-jane.h"
+#include "../scrypt-jane/scrypt-jane.h"
 
-#include "hex.h"
+#include "../hex.h"
 
 #define _SCRYPT_N (1<<18)
 #define _SCRYPT_r 8

@@ -1,8 +1,8 @@
 HEADERS = bloom.h crack.h hash160.h warpwallet.h
 OBJ_MAIN = brainflayer.o hex2blf.o blfchk.o ecmtabgen.o hexln.o
 OBJ_UTIL = hex.o bloom.o mmapf.o hsearchf.o ec_pubkey_fast.o ripemd160_256.o dldummy.o
-OBJ_FMT = warpwallet.o brainwalletio.o brainv2.o
-OBJECTS = $(OBJ_MAIN) $(OBJ_UTIL) $(OBJ_FMT)
+OBJ_ALGO = $(patsubst %.c,%.o,$(wildcard algo/*.c))
+OBJECTS = $(OBJ_MAIN) $(OBJ_UTIL) $(OBJ_ALGO)
 BINARIES = brainflayer hexln hex2blf blfchk ecmtabgen
 LIBS = -lssl -lrt -lcrypto -lz -lgmp
 CFLAGS = -O3 \
@@ -32,9 +32,11 @@ scrypt-jane/scrypt-jane.o: scrypt-jane/scrypt-jane.h scrypt-jane/scrypt-jane.c
 
 brainflayer.o: brainflayer.c secp256k1/include/secp256k1.h
 
-warpwallet.o: warpwallet.c scrypt-jane/scrypt-jane.h
+format/warpwallet.o: format/warpwallet.c scrypt-jane/scrypt-jane.h
 
-brainwalletio.o: brainwalletio.c scrypt-jane/scrypt-jane.h
+format/brainwalletio.o: format/brainwalletio.c scrypt-jane/scrypt-jane.h
+
+format/brainv2.o: format/brainv2.c scrypt-jane/scrypt-jane.h
 
 ec_pubkey_fast.o: ec_pubkey_fast.c secp256k1/include/secp256k1.h
 	$(COMPILE) -Wno-unused-function -c $< -o $@
@@ -54,7 +56,7 @@ hex2blf: hex2blf.o hex.o bloom.o mmapf.o
 ecmtabgen: ecmtabgen.o mmapf.o ec_pubkey_fast.o
 	$(COMPILE) -static $^ $(LIBS) -o $@
 
-brainflayer: brainflayer.o $(OBJ_UTIL) $(OBJ_FMT) \
+brainflayer: brainflayer.o $(OBJ_UTIL) $(OBJ_ALGO) \
              secp256k1/.libs/libsecp256k1.a scrypt-jane/scrypt-jane.o
 	$(COMPILE) -static $^ $(LIBS) -o $@
 

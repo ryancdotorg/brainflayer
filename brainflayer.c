@@ -27,9 +27,10 @@
 #include "hash160.h"
 #include "hsearchf.h"
 
-#include "brainv2.h"
-#include "warpwallet.h"
-#include "brainwalletio.h"
+#include "algo/brainv2.h"
+#include "algo/warpwallet.h"
+#include "algo/brainwalletio.h"
+#include "algo/sha3.h"
 
 static int brainflayer_is_init = 0;
 
