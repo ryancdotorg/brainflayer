@@ -43,10 +43,6 @@ static unsigned char *mem;
 static mmapf_ctx bloom_mmapf;
 static unsigned char *bloom = NULL;
 
-static unsigned char hexed0[41];
-static unsigned char hexed1[41];
-static unsigned char hexed2[65];
-
 static unsigned char *unhexed = NULL;
 static size_t unhexed_sz = 4096;
 
@@ -241,6 +237,8 @@ inline static void fprintresult(FILE *f, hash160_t *hash,
                                 unsigned char compressed,
                                 unsigned char *type,
                                 unsigned char *input) {
+  unsigned char hexed0[41];
+
   fprintf(f, "%s:%c:%s:%s\n",
           hex(hash->uc, 20, hexed0, sizeof(hexed0)),
           compressed,
@@ -254,6 +252,8 @@ inline static void fprintlookup(FILE *f,
                                 unsigned char *priv,
                                 unsigned char *type,
                                 unsigned char *input) {
+  unsigned char hexed0[41], hexed1[41], hexed2[65];
+
   fprintf(f, "%s:%s:%s:%s:%s\n",
           hex(hashu->uc, 20, hexed0, sizeof(hexed0)),
           hex(hashc->uc, 20, hexed1, sizeof(hexed1)),
