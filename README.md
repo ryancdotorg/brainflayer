@@ -75,10 +75,7 @@ options:
 
 Brainflayer supports a few other types of input via the `-t` option:
 
-* `-t hex`  hex encoded passwords/passphrases - will be decoded by brainflayer
-            for key derivation
-
-* `-t priv` hex encoded private keys - this can be used to support arbitrary
+* `-t priv` raw private keys - this can be used to support arbitrary
             deterministic wallet schemes via an external program. Any trailing
             data after the hex encoded private key will be included in
             brainflayer's output as well, for reference. See also the `-I`
