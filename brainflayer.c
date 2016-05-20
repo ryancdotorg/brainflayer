@@ -185,6 +185,16 @@ static int keccak2hash160(unsigned char *pass, size_t pass_sz) {
   return priv2hash160(priv256);
 }
 
+static int sha32hash160(unsigned char *pass, size_t pass_sz) {
+  SHA3_256_CTX sha3_256_ctx;
+
+  SHA3_256_Init(&sha3_256_ctx);
+  SHA3_256_Update(&sha3_256_ctx, pass, pass_sz);
+  SHA3_256_Final(priv256, &sha3_256_ctx);
+
+  return priv2hash160(priv256);
+}
+
 static int rawpriv2hash160(unsigned char *priv, size_t priv_sz) {
   (void)(priv_sz); // suppress warning about unused parameter
   return priv2hash160(priv);
@@ -304,12 +314,13 @@ void usage(unsigned char *name) {
                              eth - Ethereum's algorithm\n\
  -t TYPE                     inputs are TYPE - supported types:\n\
                              sha256 (default) - classic brainwallet\n\
+                             sha3   - sha3-256\n\
                              priv   - raw private keys (requires -x)\n\
                              warp   - WarpWallet (supports -s or -p)\n\
                              bwio   - brainwallet.io (supports -s or -p)\n\
                              bv2    - brainv2 (supports -s or -p) VERY SLOW\n\
                              rush   - rushwallet (requires -r) FAST\n\
-                             keccak - keccak256 (ethereum)\n\
+                             keccak - keccak256 (ethercamp/old ethaddress)\n\
  -x                          treat input as hex encoded\n\
  -s SALT                     use SALT for salted input types (default: none)\n\
  -p PASSPHRASE               use PASSPHRASE for salted input types, inputs\n\
@@ -532,6 +543,8 @@ int main(int argc, char **argv) {
       input2hash160 = &rush2hash160;
     } else if (strcmp(topt, "keccak") == 0) {
       input2hash160 = &keccak2hash160;
+    } else if (strcmp(topt, "sha3") == 0) {
+      input2hash160 = &sha32hash160;
     } else {
       bail(1, "Unknown input type '%s'.\n", topt);
     }
