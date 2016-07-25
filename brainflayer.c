@@ -34,10 +34,11 @@
 
 static int brainflayer_is_init = 0;
 
-static unsigned char hash256[SHA256_DIGEST_LENGTH];
-static unsigned char priv256[SHA256_DIGEST_LENGTH];
-static hash160_t hash160_compr;
-static hash160_t hash160_uncmp;
+typedef struct pubhashfn_s {
+   void (*fn)(hash160_t *, const unsigned char *);
+   char id;
+} pubhashfn_t;
+
 static unsigned char *mem;
 
 static mmapf_ctx bloom_mmapf;
@@ -45,8 +46,6 @@ static unsigned char *bloom = NULL;
 
 static unsigned char *hexed = NULL;
 static size_t hexed_sz = 4096;
-
-static SHA256_CTX    *sha256_ctx;
 
 #define bail(code, ...) \
 do { \
@@ -88,189 +87,205 @@ static inline void brainflayer_init_globals() {
     mem = chkmalloc(4096);
     hexed = chkmalloc(hexed_sz);
 
-    /* initialize hashs */
-    sha256_ctx = chkmalloc(sizeof(*sha256_ctx));
-
     /* set the flag */
     brainflayer_is_init = 1;
   }
 }
 
 // function pointers
-static int (*input2hash160)(unsigned char *, size_t);
-static int (*priv2hash160)(unsigned char *);
-static int (*pub2hash160)(unsigned char *);
+static int (*input2priv)(unsigned char *, unsigned char *, size_t);
 
-inline static int btcpub2hash160(unsigned char *pub_chr) {
-  /* compute hash160 for uncompressed public key */
-  /* sha256(pub) */
-  SHA256_Init(sha256_ctx);
-  SHA256_Update(sha256_ctx, pub_chr, 65);
-  SHA256_Final(hash256, sha256_ctx);
-  /* ripemd160(sha256(pub)) */
-  ripemd160_256(hash256, hash160_uncmp.uc);
+/* bitcoin uncompressed address */
+static void uhash160(hash160_t *h, const unsigned char *upub) {
+  SHA256_CTX ctx;
+  unsigned char hash[SHA256_DIGEST_LENGTH];
 
-  /* quick and dirty public key compression */
-  pub_chr[0] = 0x02 | (pub_chr[64] & 0x01);
-
-  /* compute hash160 for compressed public key */
-  /* sha256(pub) */
-  SHA256_Init(sha256_ctx);
-  SHA256_Update(sha256_ctx, pub_chr, 33);
-  SHA256_Final(hash256, sha256_ctx);
-  /* ripemd160(sha256(pub)) */
-  ripemd160_256(hash256, hash160_compr.uc);
-
-  return 0;
+  SHA256_Init(&ctx);
+  SHA256_Update(&ctx, upub, 65);
+  SHA256_Final(hash, &ctx);
+  ripemd160_256(hash, h->uc);
 }
 
-inline static int ethpub2hash160(unsigned char *pub_chr) {
-  SHA3_256_CTX sha3_256_ctx;
+/* bitcoin compressed address */
+static void chash160(hash160_t *h, const unsigned char *upub) {
+  SHA256_CTX ctx;
+  unsigned char cpub[33];
+  unsigned char hash[SHA256_DIGEST_LENGTH];
+
+  /* quick and dirty public key compression */
+  cpub[0] = 0x02 | (upub[64] & 0x01);
+  memcpy(cpub + 1, upub + 1, 32);
+  SHA256_Init(&ctx);
+  SHA256_Update(&ctx, cpub, 33);
+  SHA256_Final(hash, &ctx);
+  ripemd160_256(hash, h->uc);
+}
+
+/* ethereum address */
+static void ehash160(hash160_t *h, const unsigned char *upub) {
+  SHA3_256_CTX ctx;
+  unsigned char hash[SHA256_DIGEST_LENGTH];
 
   /* compute hash160 for uncompressed public key */
   /* keccak_256_last160(pub) */
-  KECCAK_256_Init(&sha3_256_ctx);
-  KECCAK_256_Update(&sha3_256_ctx, pub_chr+1, 64);
-  KECCAK_256_Final(hash256, &sha3_256_ctx);
-  memcpy(hash160_uncmp.uc, hash256+12, 20);
+  KECCAK_256_Init(&ctx);
+  KECCAK_256_Update(&ctx, upub+1, 64);
+  KECCAK_256_Final(hash, &ctx);
+  memcpy(h->uc, hash+12, 20);
+}
 
-  /* ethereum doesn't have compressed keys */
+
+
+
+static int pass2priv(unsigned char *priv, unsigned char *pass, size_t pass_sz) {
+  SHA256_CTX ctx;
+
+  SHA256_Init(&ctx);
+  SHA256_Update(&ctx, pass, pass_sz);
+  SHA256_Final(priv, &ctx);
 
   return 0;
 }
 
-inline static int priv_incr(unsigned char *priv) {
-  unsigned char *pub_chr = mem;
-  int pub_chr_sz;
+static int keccak2priv(unsigned char *priv, unsigned char *pass, size_t pass_sz) {
+  SHA3_256_CTX ctx;
 
-  secp256k1_ec_pubkey_incr(pub_chr, &pub_chr_sz, priv);
+  KECCAK_256_Init(&ctx);
+  KECCAK_256_Update(&ctx, pass, pass_sz);
+  KECCAK_256_Final(priv, &ctx);
 
-  return pub2hash160(pub_chr);
+  return 0;
 }
 
-static int btcpriv2hash160(unsigned char *priv) {
-  unsigned char *pub_chr = mem;
-  int pub_chr_sz;
+static int sha32priv(unsigned char *priv, unsigned char *pass, size_t pass_sz) {
+  SHA3_256_CTX ctx;
 
-  secp256k1_ec_pubkey_create_precomp(pub_chr, &pub_chr_sz, priv);
+  SHA3_256_Init(&ctx);
+  SHA3_256_Update(&ctx, pass, pass_sz);
+  SHA3_256_Final(priv, &ctx);
 
-  return btcpub2hash160(pub_chr);
+  return 0;
 }
 
-static int ethpriv2hash160(unsigned char *priv) {
-  unsigned char *pub_chr = mem;
-  int pub_chr_sz;
+/*
+static int dicap2hash160(unsigned char *pass, size_t pass_sz) {
+  SHA3_256_CTX ctx;
 
-  secp256k1_ec_pubkey_create_precomp(pub_chr, &pub_chr_sz, priv);
+  int i, ret;
 
-  return ethpub2hash160(pub_chr);
+  KECCAK_256_Init(&ctx);
+  KECCAK_256_Update(&ctx, pass, pass_sz);
+  KECCAK_256_Final(priv256, &ctx);
+  for (i = 0; i < 16384; ++i) {
+    KECCAK_256_Init(&ctx);
+    KECCAK_256_Update(&ctx, priv256, 32);
+    KECCAK_256_Final(priv256, &ctx);
+  }
+
+  for (;;) {
+    ret = priv2hash160(priv256);
+    if (hash160_uncmp.uc[0] == 0) { break; }
+    KECCAK_256_Init(&ctx);
+    KECCAK_256_Update(&ctx, priv256, 32);
+    KECCAK_256_Final(priv256, &ctx);
+  }
+  return ret;
 }
+*/
 
-static int pass2hash160(unsigned char *pass, size_t pass_sz) {
-  /* privkey = sha256(passphrase) */
-  SHA256_Init(sha256_ctx);
-  SHA256_Update(sha256_ctx, pass, pass_sz);
-  SHA256_Final(priv256, sha256_ctx);
-
-  return priv2hash160(priv256);
-}
-
-static int keccak2hash160(unsigned char *pass, size_t pass_sz) {
-  SHA3_256_CTX sha3_256_ctx;
-
-  KECCAK_256_Init(&sha3_256_ctx);
-  KECCAK_256_Update(&sha3_256_ctx, pass, pass_sz);
-  KECCAK_256_Final(priv256, &sha3_256_ctx);
-
-  return priv2hash160(priv256);
-}
-
-static int sha32hash160(unsigned char *pass, size_t pass_sz) {
-  SHA3_256_CTX sha3_256_ctx;
-
-  SHA3_256_Init(&sha3_256_ctx);
-  SHA3_256_Update(&sha3_256_ctx, pass, pass_sz);
-  SHA3_256_Final(priv256, &sha3_256_ctx);
-
-  return priv2hash160(priv256);
-}
-
-static int rawpriv2hash160(unsigned char *priv, size_t priv_sz) {
-  (void)(priv_sz); // suppress warning about unused parameter
-  return priv2hash160(priv);
+static int rawpriv2priv(unsigned char *priv, unsigned char *rawpriv, size_t rawpriv_sz) {
+  memcpy(priv, rawpriv, rawpriv_sz);
+  return 0;
 }
 
 static unsigned char *kdfsalt;
 static size_t kdfsalt_sz;
 
-static int warppass2hash160(unsigned char *pass, size_t pass_sz) {
+static int warppass2priv(unsigned char *priv, unsigned char *pass, size_t pass_sz) {
   int ret;
-  if ((ret = warpwallet(pass, pass_sz, kdfsalt, kdfsalt_sz, priv256)) != 0) return ret;
+  if ((ret = warpwallet(pass, pass_sz, kdfsalt, kdfsalt_sz, priv)) != 0) return ret;
   pass[pass_sz] = 0;
-  return priv2hash160(priv256);
+  return 0;
 }
 
-static int bwiopass2hash160(unsigned char *pass, size_t pass_sz) {
+static int bwiopass2priv(unsigned char *priv, unsigned char *pass, size_t pass_sz) {
   int ret;
-  if ((ret = brainwalletio(pass, pass_sz, kdfsalt, kdfsalt_sz, priv256)) != 0) return ret;
+  if ((ret = brainwalletio(pass, pass_sz, kdfsalt, kdfsalt_sz, priv)) != 0) return ret;
   pass[pass_sz] = 0;
-  return priv2hash160(priv256);
+  return 0;
 }
 
-static int brainv2pass2hash160(unsigned char *pass, size_t pass_sz) {
+static int brainv2pass2priv(unsigned char *priv, unsigned char *pass, size_t pass_sz) {
   unsigned char hexout[33];
   int ret;
   if ((ret = brainv2(pass, pass_sz, kdfsalt, kdfsalt_sz, hexout)) != 0) return ret;
   pass[pass_sz] = 0;
-  return pass2hash160(hexout, sizeof(hexout)-1);
+  return pass2priv(priv, hexout, sizeof(hexout)-1);
 }
 
 static unsigned char *kdfpass;
 static size_t kdfpass_sz;
 
-static int warpsalt2hash160(unsigned char *salt, size_t salt_sz) {
+static int warpsalt2priv(unsigned char *priv, unsigned char *salt, size_t salt_sz) {
   int ret;
-  if ((ret = warpwallet(kdfpass, kdfpass_sz, salt, salt_sz, priv256)) != 0) return ret;
+  if ((ret = warpwallet(kdfpass, kdfpass_sz, salt, salt_sz, priv)) != 0) return ret;
   salt[salt_sz] = 0;
-  return priv2hash160(priv256);
+  return 0;
 }
 
-static int bwiosalt2hash160(unsigned char *salt, size_t salt_sz) {
+static int bwiosalt2priv(unsigned char *priv, unsigned char *salt, size_t salt_sz) {
   int ret;
-  if ((ret = brainwalletio(kdfpass, kdfpass_sz, salt, salt_sz, priv256)) != 0) return ret;
+  if ((ret = brainwalletio(kdfpass, kdfpass_sz, salt, salt_sz, priv)) != 0) return ret;
   salt[salt_sz] = 0;
-  return priv2hash160(priv256);
+  return 0;
 }
 
-static int brainv2salt2hash160(unsigned char *salt, size_t salt_sz) {
+static int brainv2salt2priv(unsigned char *priv, unsigned char *salt, size_t salt_sz) {
   unsigned char hexout[33];
   int ret;
   if ((ret = brainv2(kdfpass, kdfpass_sz, salt, salt_sz, hexout)) != 0) return ret;
   salt[salt_sz] = 0;
-  return pass2hash160(hexout, sizeof(hexout)-1);
+  return pass2priv(priv, hexout, sizeof(hexout)-1);
 }
 
 static unsigned char rushchk[5];
-static int rush2hash160(unsigned char *pass, size_t pass_sz) {
+static int rush2priv(unsigned char *priv, unsigned char *pass, size_t pass_sz) {
+  SHA256_CTX ctx;
+  unsigned char hash[SHA256_DIGEST_LENGTH];
   unsigned char userpasshash[SHA256_DIGEST_LENGTH*2+1];
 
-  SHA256_Init(sha256_ctx);
-  SHA256_Update(sha256_ctx, pass, pass_sz);
-  SHA256_Final(hash256, sha256_ctx);
+  SHA256_Init(&ctx);
+  SHA256_Update(&ctx, pass, pass_sz);
+  SHA256_Final(hash, &ctx);
 
-  hex(hash256, sizeof(hash256), userpasshash, sizeof(userpasshash));
+  hex(hash, sizeof(hash), userpasshash, sizeof(userpasshash));
 
-  SHA256_Init(sha256_ctx);
+  SHA256_Init(&ctx);
   // kdfsalt should be the fragment up to the !
-  SHA256_Update(sha256_ctx, kdfsalt, kdfsalt_sz);
-  SHA256_Update(sha256_ctx, userpasshash, 64);
-  SHA256_Final(priv256, sha256_ctx);
+  SHA256_Update(&ctx, kdfsalt, kdfsalt_sz);
+  SHA256_Update(&ctx, userpasshash, 64);
+  SHA256_Final(priv, &ctx);
 
   // early exit if the checksum doesn't match
-  if (memcmp(priv256, rushchk, sizeof(rushchk)) != 0) { return -1; }
+  if (memcmp(priv, rushchk, sizeof(rushchk)) != 0) { return -1; }
 
-  return priv2hash160(priv256);
+  return 0;
 }
+
+inline static int priv_incr(unsigned char *upub, unsigned char *priv) {
+  int sz;
+
+  secp256k1_ec_pubkey_incr(upub, &sz, priv);
+
+  return 0;
+}
+
+inline static void priv2pub(unsigned char *upub, const unsigned char *priv) {
+  int sz;
+
+  secp256k1_ec_pubkey_create_precomp(upub, &sz, priv);
+}
+
 
 inline static void fprintresult(FILE *f, hash160_t *hash,
                                 unsigned char compressed,
@@ -285,33 +300,20 @@ inline static void fprintresult(FILE *f, hash160_t *hash,
           input);
 }
 
-inline static void fprintlookup(FILE *f,
-                                hash160_t *hashu,
-                                hash160_t *hashc,
-                                unsigned char *priv,
-                                unsigned char *type,
-                                unsigned char *input) {
-  unsigned char hexed0[41], hexed1[41], hexed2[65];
-
-  fprintf(f, "%s:%s:%s:%s:%s\n",
-          hex(hashu->uc, 20, hexed0, sizeof(hexed0)),
-          hex(hashc->uc, 20, hexed1, sizeof(hexed1)),
-          hex(priv, 32, hexed2, sizeof(hexed2)),
-          type,
-          input);
-}
-
 void usage(unsigned char *name) {
   printf("Usage: %s [OPTION]...\n\n\
  -a                          open output file in append mode\n\
  -b FILE                     check for matches against bloom filter FILE\n\
  -f FILE                     verify matches against sorted hash160s in FILE\n\
- -L                          use single line mode for table output\n\
  -i FILE                     read from FILE instead of stdin\n\
  -o FILE                     write to FILE instead of stdout\n\
- -c TYPE                     use TYPE for hash160 generation - supported types:\n\
-                             btc (default) - Bitcoin's algorithm (most coins)\n\
-                             eth - Ethereum's algorithm\n\
+ -c TYPES                    use TYPES for public key to hash160 computation\n\
+                             multiple can be specified, for example the default\n\
+                             is 'uc', which will check for both uncompressed\n\
+                             and compressed addresses using Bitcoin's algorithm\n\
+                             u - uncompressed address\n\
+                             c - compressed address\n\
+                             e - ethereum address\n\
  -t TYPE                     inputs are TYPE - supported types:\n\
                              sha256 (default) - classic brainwallet\n\
                              sha3   - sha3-256\n\
@@ -346,7 +348,7 @@ int main(int argc, char **argv) {
   FILE *ofile = stdout;
   FILE *ffile = NULL;
 
-  int ret, fd;
+  int ret, c, i;
 
   float alpha, ilines_rate, ilines_rate_avg;
   int64_t raw_lines = -1;
@@ -364,13 +366,19 @@ int main(int argc, char **argv) {
   size_t line_sz = 0;
   int line_read = 0;
 
-  int c, spok = 0, aopt = 0, vopt = 0, wopt = 16, Lopt = 0, xopt = 0;
+  int spok = 0, aopt = 0, vopt = 0, wopt = 16, xopt = 0;
   int nopt_mod = 0, nopt_rem = 0;
   uint64_t kopt = 0;
   unsigned char *bopt = NULL, *iopt = NULL, *oopt = NULL;
   unsigned char *topt = NULL, *sopt = NULL, *popt = NULL;
   unsigned char *mopt = NULL, *fopt = NULL, *ropt = NULL;
   unsigned char *Iopt = NULL, *copt = NULL;
+
+  unsigned char priv[64];
+  unsigned char upub[65];
+  hash160_t hash160;
+  pubhashfn_t pubhashfn[8];
+  memset(pubhashfn, 0, sizeof(pubhashfn));
 
   while ((c = getopt(argc, argv, "avxb:hi:k:f:m:n:o:p:s:r:c:t:w:I:L")) != -1) {
     switch (c) {
@@ -432,9 +440,6 @@ int main(int argc, char **argv) {
         Iopt = optarg; // start key for incremental
         xopt = 1; // input is hex encoded
         break;
-      case 'L':
-        Lopt = 1; // lookup output
-        break;
       case 'h':
         // show help
         usage(argv[0]);
@@ -495,62 +500,62 @@ int main(int argc, char **argv) {
     }
     topt = "priv";
     line = Iopt;
-    unhex(Iopt, sizeof(priv256)*2, priv256, sizeof(priv256));
+    unhex(Iopt, sizeof(priv)*2, priv, sizeof(priv));
     skipping = 1;
     if (!nopt_mod) { nopt_mod = 1; };
   }
 
 
-  if (copt != NULL) {
-    if (strcmp(copt, "btc") == 0) {
-      priv2hash160 = &btcpriv2hash160;
-      pub2hash160  = &btcpub2hash160;
-    } else if (strcmp(copt, "eth") == 0) {
-      priv2hash160 = &ethpriv2hash160;
-      pub2hash160  = &ethpub2hash160;
-      /* ethereum doesn't use compressed addresses, *
-       * random fill it once at start to avoid DoS. */
-      fd = open("/dev/urandom", O_RDONLY);
-      ret = read(fd, hash160_compr.uc, 20);
-      close(fd);
-    } else {
-      bail(1, "Unknown hash160 type '%s'.\n", copt);
+  /* handle copt */
+  if (copt == NULL) { copt = "uc"; }
+  i = 0;
+  while (copt[i]) {
+    switch (copt[i]) {
+      case 'u':
+        pubhashfn[i].fn = &uhash160;
+        break;
+      case 'c':
+        pubhashfn[i].fn = &chash160;
+        break;
+      case 'e':
+        pubhashfn[i].fn = &ehash160;
+        break;
+      default:
+        bail(1, "Unknown hash160 type '%c'.\n", copt[i]);
     }
-  } else {
-    copt = "btc";
-    priv2hash160 = &btcpriv2hash160;
-    pub2hash160  = &btcpub2hash160;
+    pubhashfn[i].id = copt[i];
+    ++i;
   }
 
-  if (topt != NULL) {
-    if (strcmp(topt, "sha256") == 0) {
-      input2hash160 = &pass2hash160;
-    } else if (strcmp(topt, "priv") == 0) {
-      if (!xopt) {
-        bail(1, "raw private key input requires -x");
-      }
-      input2hash160 = &rawpriv2hash160;
-    } else if (strcmp(topt, "warp") == 0) {
-      spok = 1;
-      input2hash160 = popt ? &warpsalt2hash160 : &warppass2hash160;
-    } else if (strcmp(topt, "bwio") == 0) {
-      spok = 1;
-      input2hash160 = popt ? &bwiosalt2hash160 : &bwiopass2hash160;
-    } else if (strcmp(topt, "bv2") == 0) {
-      spok = 1;
-      input2hash160 = popt ? &brainv2salt2hash160 : &brainv2pass2hash160;
-    } else if (strcmp(topt, "rush") == 0) {
-      input2hash160 = &rush2hash160;
-    } else if (strcmp(topt, "keccak") == 0) {
-      input2hash160 = &keccak2hash160;
-    } else if (strcmp(topt, "sha3") == 0) {
-      input2hash160 = &sha32hash160;
-    } else {
-      bail(1, "Unknown input type '%s'.\n", topt);
+  /* handle topt */
+  if (topt == NULL) { topt = "sha256"; }
+
+  if (strcmp(topt, "sha256") == 0) {
+    input2priv = &pass2priv;
+  } else if (strcmp(topt, "priv") == 0) {
+    if (!xopt) {
+      bail(1, "raw private key input requires -x");
     }
+    input2priv = &rawpriv2priv;
+  } else if (strcmp(topt, "warp") == 0) {
+    spok = 1;
+    input2priv = popt ? &warpsalt2priv : &warppass2priv;
+  } else if (strcmp(topt, "bwio") == 0) {
+    spok = 1;
+    input2priv = popt ? &bwiosalt2priv : &bwiopass2priv;
+  } else if (strcmp(topt, "bv2") == 0) {
+    spok = 1;
+    input2priv = popt ? &brainv2salt2priv : &brainv2pass2priv;
+  } else if (strcmp(topt, "rush") == 0) {
+    input2priv = &rush2priv;
+  } else if (strcmp(topt, "keccak") == 0) {
+    input2priv = &keccak2priv;
+  } else if (strcmp(topt, "sha3") == 0) {
+    input2priv = &sha32priv;
+//  } else if (strcmp(topt, "dicap") == 0) {
+//    input2priv = &dicap2priv;
   } else {
-    topt = "sha256";
-    input2hash160 = &pass2hash160;
+    bail(1, "Unknown input type '%s'.\n", topt);
   }
 
   if (spok) {
@@ -578,7 +583,7 @@ int main(int argc, char **argv) {
   }
 
   if (ropt) {
-    if (input2hash160 != &rush2hash160) {
+    if (input2priv != &rush2priv) {
       bail(1, "Specifying a url fragment only supported with input type 'rush'\n");
     }
     kdfsalt = ropt;
@@ -588,20 +593,13 @@ int main(int argc, char **argv) {
     }
     unhex(kdfsalt+kdfsalt_sz, sizeof(rushchk)*2, rushchk, sizeof(rushchk));
     kdfsalt[kdfsalt_sz] = '\0';
-  } else if (input2hash160 == &rush2hash160) {
+  } else if (input2priv == &rush2priv) {
     bail(1, "The '-r' option is required for rushwallet.\n");
   }
 
-  if (xopt) {
-    snprintf(modestr, sizeof(modestr), "(hex)%s/%s", topt, copt);
-  } else {
-    snprintf(modestr, sizeof(modestr), "%s/%s", topt, copt);
-  }
+  snprintf(modestr, sizeof(modestr), xopt ? "(hex)%s" : "%s", topt);
 
   if (bopt) {
-    if (Lopt) {
-      bail(1, "The '-L' option cannot be used with a bloom filter\n");
-    }
     if ((ret = mmapf(&bloom_mmapf, bopt, BLOOM_SIZE, MMAPF_RNDRD)) != MMAPF_OKAY) {
       bail(1, "failed to open bloom filter '%s': %s\n", bopt, mmapf_strerror(ret));
     } else if (bloom_mmapf.mem == NULL) {
@@ -657,11 +655,11 @@ int main(int argc, char **argv) {
   for (;;) {
     if (Iopt) {
       if (!skipping) {
-        priv_incr(priv256);
+        priv_incr(upub, priv);
       } else {
-        priv_add_uint32(priv256, nopt_rem);
-        secp256k1_ec_pubkey_incr_init(priv256, nopt_mod);
-        priv2hash160(priv256);
+        priv_add_uint32(priv, nopt_rem);
+        secp256k1_ec_pubkey_incr_init(priv, nopt_mod);
+        priv2pub(upub, priv);
         skipping = 0;
         line_read = 1;
       }
@@ -676,52 +674,41 @@ int main(int argc, char **argv) {
         line_read /= 2;
       }
       line[line_read] = 0;
-      if (input2hash160(line, line_read) != 0) {
+      if (input2priv(priv, line, line_read) != 0) {
         goto loop_update_stats;
       }
+      priv2pub(upub, priv);
     } else {
       if (!vopt) break;
       goto loop_update_stats;
     }
 
+    i = 0;
     if (bloom) {
-      if (bloom_chk_hash160(bloom, hash160_uncmp.ul)) {
-        if (!fopt || hsearchf(ffile, &hash160_uncmp)) {
-          if (tty) { fprintf(ofile, "\033[0K"); }
-          if (Iopt) {
-            hex(priv256, 32, line, 65);
-          } else if (xopt) {
-            if (line_read / 2 > hexed_sz) {
-              hexed_sz = line_read * 3;
-              hexed = chkrealloc(hexed, hexed_sz);
+      while (pubhashfn[i].fn != NULL) {
+        pubhashfn[i].fn(&hash160, upub);
+        if (bloom_chk_hash160(bloom, hash160.ul)) {
+          if (!fopt || hsearchf(ffile, &hash160)) {
+            if (tty) { fprintf(ofile, "\033[0K"); }
+            if (Iopt) {
+              hex(priv, 32, line, 65);
+            } else if (xopt) {
+              if (line_read / 2 > hexed_sz) {
+                hexed_sz = line_read * 3;
+                hexed = chkrealloc(hexed, hexed_sz);
+              }
+              hex(line, line_read, hexed, hexed_sz);
+              strncpy(line, hexed, line_sz);
             }
-            hex(line, line_read, hexed, hexed_sz);
-            strncpy(line, hexed, line_sz);
+            fprintresult(ofile, &hash160, pubhashfn[i].id, modestr, line);
+            ++olines;
           }
-          fprintresult(ofile, &hash160_uncmp, 'u', modestr, line);
-          ++olines;
         }
-      }
-      if (bloom_chk_hash160(bloom, hash160_compr.ul)) {
-        if (!fopt || hsearchf(ffile, &hash160_compr)) {
-          if (tty) { fprintf(ofile, "\033[0K"); }
-          if (Iopt) {
-            hex(priv256, 32, line, 65);
-          } else if (xopt) {
-            if (line_read / 2 > hexed_sz) {
-              hexed_sz = line_read * 3;
-              hexed = chkrealloc(hexed, hexed_sz);
-            }
-            hex(line, line_read, hexed, hexed_sz);
-            strncpy(line, hexed, line_sz);
-          }
-          fprintresult(ofile, &hash160_compr, 'c', modestr, line);
-          ++olines;
-        }
+        ++i;
       }
     } else {
       if (Iopt) {
-        hex(priv256, 32, line, 65);
+        hex(priv, 32, line, 65);
       } else if (xopt) {
         if (line_read / 2 > hexed_sz) {
           hexed_sz = line_read * 3;
@@ -730,11 +717,10 @@ int main(int argc, char **argv) {
         hex(line, line_read, hexed, hexed_sz);
         strncpy(line, hexed, line_sz);
       }
-      if (Lopt) {
-        fprintlookup(ofile, &hash160_uncmp, &hash160_compr, priv256, modestr, line);
-      } else {
-        fprintresult(ofile, &hash160_uncmp, 'u', modestr, line);
-        fprintresult(ofile, &hash160_compr, 'c', modestr, line);
+      while (pubhashfn[i].fn != NULL) {
+        pubhashfn[i].fn(&hash160, upub);
+        fprintresult(ofile, &hash160, pubhashfn[i].id, modestr, line);
+        ++i;
       }
     }
 
