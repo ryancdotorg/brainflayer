@@ -531,6 +531,9 @@ int main(int argc, char **argv) {
       default:
         bail(1, "Unknown hash160 type '%c'.\n", copt[i]);
     }
+    if (strchr(copt + i + 1, copt[i])) {
+      bail(1, "Duplicate hash160 type '%c'.\n", copt[i]);
+    }
     pubhashfn[i].id = copt[i];
     ++i;
   }
