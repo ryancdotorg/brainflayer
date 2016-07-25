@@ -134,6 +134,10 @@ static void ehash160(hash160_t *h, const unsigned char *upub) {
   memcpy(h->uc, hash+12, 20);
 }
 
+/* msb of x coordinate of public key */
+static void xhash160(hash160_t *h, const unsigned char *upub) {
+  memcpy(h->uc, upub+1, 20);
+}
 
 
 
@@ -314,6 +318,7 @@ void usage(unsigned char *name) {
                              u - uncompressed address\n\
                              c - compressed address\n\
                              e - ethereum address\n\
+                             x - most signifigant bits of x coordinate\n\
  -t TYPE                     inputs are TYPE - supported types:\n\
                              sha256 (default) - classic brainwallet\n\
                              sha3   - sha3-256\n\
@@ -519,6 +524,9 @@ int main(int argc, char **argv) {
         break;
       case 'e':
         pubhashfn[i].fn = &ehash160;
+        break;
+      case 'x':
+        pubhashfn[i].fn = &xhash160;
         break;
       default:
         bail(1, "Unknown hash160 type '%c'.\n", copt[i]);
