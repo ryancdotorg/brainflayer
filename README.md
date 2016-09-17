@@ -13,6 +13,10 @@ brains, psionically enslave people and look like lovecraftian horrors.
 The current release is more than four times faster than the DEFCON release, and
 many features have been added.
 
+If brainflayer is useful to you, please get in touch to let me know. I'm very
+interested in any research it's being used for, and I'm generally happy to
+collaborate with academic groups.
+
 Disclaimer
 ----------
 Just because you *can* steal someone's money doesn't mean you *should*.
@@ -44,11 +48,11 @@ Precompute the bloom filter:
 
 Run Brainflayer against it:
 
-`brainflayer -b example.blf -i phraselist.txt`
+`brainflayer -v -b example.blf -i phraselist.txt`
 
 or
 
-`your_generator | brainflayer -b example.blf`
+`your_generator | brainflayer -v -b example.blf`
 
 ### Advanced
 
@@ -70,13 +74,19 @@ While not strictly required, it is *highly* recommended to use the following
 options:
 
 * `-m FILE` Load the ecmult table from `FILE` (generated with `ecmtabgen`)
-            rather than computing it on startup.
+            rather than computing it on startup. This will allow multiple
+            brainflayer processes to share the same table in memory, and
+            signifigantly reduce startup time when using a large table.
 
 * `-f FILE` Verify check bloom filter matches against `FILE`, a list of all
             hash160s generated with
             `sort -u example.hex | xxd -r -p > example.bin`
+            Enough addresses exist on the Bitcoin network to cause false
+            positives in the bloom filter, this option will suppress them.
 
 Brainflayer supports a few other types of input via the `-t` option:
+
+* `-t keccak` passphrases to be hashed with keccak256 (some ethereum tools)
 
 * `-t priv` raw private keys - this can be used to support arbitrary
             deterministic wallet schemes via an external program. Any trailing
@@ -96,6 +106,23 @@ Brainflayer supports a few other types of input via the `-t` option:
 * `-t rush` passwords for password-protected rushwallets - pass the fragment (the
             part of the url after the #) using `-r`. Almost all wrong passwords
             will be rejected even without a bloom filter.
+
+Address types can be specified with the `-c` option:
+
+* `-c u` uncompressed addresses
+
+* `-c c` compressed addresses
+
+* `-c e` ethereum addresses
+
+* `-c x` most signifigant bits of public point's x coordinate
+
+It's possible to combine two or more of these, e.g. the default is `-c uc`.
+
+An incremental private key brute force mode is available for fans of
+[directory.io](http://www.directory.io/), try
+
+`brainflayer -v -I 0000000000000000000000000000000000000000000000000000000000000001 -b example.blf`
 
 See the output of `brainflayer -h` for more detailed usage info.
 
