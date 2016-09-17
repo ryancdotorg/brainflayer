@@ -32,6 +32,10 @@
 #include "algo/brainwalletio.h"
 #include "algo/sha3.h"
 
+// raise this if you really want, but quickly diminishing returns
+#define BATCH_MAX 1024
+#define BATCH BATCH_MAX
+
 static int brainflayer_is_init = 0;
 
 typedef struct pubhashfn_s {
@@ -353,7 +357,7 @@ int main(int argc, char **argv) {
   FILE *ofile = stdout;
   FILE *ffile = NULL;
 
-  int ret, c, i;
+  int ret, c, i, j;
 
   float alpha, ilines_rate, ilines_rate_avg;
   int64_t raw_lines = -1;
@@ -367,10 +371,6 @@ int main(int argc, char **argv) {
 
   unsigned char modestr[64];
 
-  char *line = NULL;
-  size_t line_sz = 0;
-  int line_read = 0;
-
   int spok = 0, aopt = 0, vopt = 0, wopt = 16, xopt = 0;
   int nopt_mod = 0, nopt_rem = 0;
   uint64_t kopt = 0;
@@ -380,10 +380,17 @@ int main(int argc, char **argv) {
   unsigned char *Iopt = NULL, *copt = NULL;
 
   unsigned char priv[64];
-  unsigned char upub[65];
   hash160_t hash160;
   pubhashfn_t pubhashfn[8];
   memset(pubhashfn, 0, sizeof(pubhashfn));
+
+  char *line = NULL;
+  int batch_stopped = -1;
+  char *batch_line[BATCH_MAX];
+  size_t batch_line_sz[BATCH_MAX];
+  int batch_line_read[BATCH_MAX];
+  unsigned char batch_priv[BATCH_MAX][32];
+  unsigned char batch_upub[BATCH_MAX][65];
 
   while ((c = getopt(argc, argv, "avxb:hi:k:f:m:n:o:p:s:r:c:t:w:I:L")) != -1) {
     switch (c) {
@@ -653,6 +660,10 @@ int main(int argc, char **argv) {
     bail(1, "failed to initialize precomputed table\n");
   }
 
+  if (secp256k1_ec_pubkey_batch_init(BATCH_MAX) != 0) {
+    bail(1, "failed to initialize batch point conversion structures\n");
+  }
+
   if (vopt) {
     /* initialize timing data */
     time_start = time_last = getns();
@@ -665,80 +676,117 @@ int main(int argc, char **argv) {
 
   for (;;) {
     if (Iopt) {
-      if (!skipping) {
-        priv_incr(upub, priv);
-      } else {
-        priv_add_uint32(priv, nopt_rem);
-        secp256k1_ec_pubkey_incr_init(priv, nopt_mod);
-        priv2pub(upub, priv);
-        skipping = 0;
-        line_read = 1;
-      }
-    } else if ((line_read = getline(&line, &line_sz, ifile)-1) > -1) {
       if (skipping) {
-        ++raw_lines;
-        if (kopt && raw_lines < kopt) { continue; }
-        if (nopt_mod && raw_lines % nopt_mod != nopt_rem) { continue; }
+        priv_add_uint32(priv, nopt_rem);
+        skipping = 0;
       }
-      if (xopt) {
-        unhex(line, line_read, line, line_sz);
-        line_read /= 2;
-      }
-      line[line_read] = 0;
-      if (input2priv(priv, line, line_read) != 0) {
-        goto loop_update_stats;
-      }
-      priv2pub(upub, priv);
-    } else {
-      if (!vopt) break;
-      goto loop_update_stats;
-    }
+      secp256k1_ec_pubkey_batch_incr(BATCH, nopt_mod, batch_upub, batch_priv, priv);
+      memcpy(priv, batch_priv[BATCH-1], 32);
+      priv_add_uint32(priv, nopt_mod);
 
-    i = 0;
-    if (bloom) {
-      while (pubhashfn[i].fn != NULL) {
-        pubhashfn[i].fn(&hash160, upub);
-        if (bloom_chk_hash160(bloom, hash160.ul)) {
-          if (!fopt || hsearchf(ffile, &hash160)) {
-            if (tty) { fprintf(ofile, "\033[0K"); }
-            if (Iopt) {
-              hex(priv, 32, line, 65);
-            } else if (xopt) {
-              if (line_read / 2 > hexed_sz) {
-                hexed_sz = line_read * 3;
-                hexed = chkrealloc(hexed, hexed_sz);
+      // loop over keys
+      for (i = 0; i < BATCH; ++i) {
+        j = 0;
+        if (bloom) {
+          // loop over pubkey hash functions
+          while (pubhashfn[j].fn != NULL) {
+            pubhashfn[j].fn(&hash160, batch_upub[i]);
+            if (bloom_chk_hash160(bloom, hash160.ul)) {
+              if (!fopt || hsearchf(ffile, &hash160)) {
+                if (tty) { fprintf(ofile, "\033[0K"); }
+                hex(batch_priv[i], 32, line, 65);
+                fprintresult(ofile, &hash160, pubhashfn[j].id, modestr, line);
+                ++olines;
               }
-              hex(line, line_read, hexed, hexed_sz);
-              strncpy(line, hexed, line_sz);
             }
-            fprintresult(ofile, &hash160, pubhashfn[i].id, modestr, line);
-            ++olines;
+            ++j;
+          }
+        } else {
+          hex(batch_priv[i], 32, line, 65);
+          while (pubhashfn[j].fn != NULL) {
+            pubhashfn[j].fn(&hash160, batch_upub[i]);
+            fprintresult(ofile, &hash160, pubhashfn[j].id, modestr, line);
+            ++j;
           }
         }
-        ++i;
       }
+      batch_stopped = i;
     } else {
-      if (Iopt) {
-        hex(priv, 32, line, 65);
-      } else if (xopt) {
-        if (line_read / 2 > hexed_sz) {
-          hexed_sz = line_read * 3;
-          hexed = chkrealloc(hexed, hexed_sz);
+      for (i = 0; i < BATCH; ++i) {
+        if ((batch_line_read[i] = getline(&batch_line[i], &batch_line_sz[i], ifile)-1) > -1) {
+          if (skipping) {
+            ++raw_lines;
+            if (kopt && raw_lines < kopt) { --i; continue; }
+            if (nopt_mod && raw_lines % nopt_mod != nopt_rem) { --i; continue; }
+          }
+        } else {
+          break;
         }
-        hex(line, line_read, hexed, hexed_sz);
-        strncpy(line, hexed, line_sz);
+        if (xopt) {
+          // rewrite the input line from hex
+          unhex(batch_line[i], batch_line_read[i], batch_line[i], batch_line_sz[i]);
+          batch_line_read[i] /= 2;
+        }
+        batch_line[i][batch_line_read[i]] = 0;
+        if (input2priv(batch_priv[i], batch_line[i], batch_line_read[i]) != 0) {
+          fprintf(stderr, "input2priv failed! continuing...\n");
+        }
       }
-      while (pubhashfn[i].fn != NULL) {
-        pubhashfn[i].fn(&hash160, upub);
-        fprintresult(ofile, &hash160, pubhashfn[i].id, modestr, line);
-        ++i;
-      }
-    }
+      // save ending value from read loop
+      batch_stopped = i;
 
-loop_update_stats:
+      // batch compute the public keys
+      secp256k1_ec_pubkey_batch_create(BATCH, batch_upub, batch_priv);
+
+      // loop over the public keys
+      for (i = 0; i < batch_stopped; ++i) {
+        j = 0;
+        if (bloom) {
+          // loop over pubkey hash functions
+          while (pubhashfn[j].fn != NULL) {
+            pubhashfn[j].fn(&hash160, batch_upub[i]);
+            if (bloom_chk_hash160(bloom, hash160.ul)) {
+              if (!fopt || hsearchf(ffile, &hash160)) {
+                if (tty) { fprintf(ofile, "\033[0K"); }
+                if (Iopt) {
+                  hex(batch_priv[i], 32, batch_line[i], 65);
+                } else if (xopt) {
+                  if (batch_line_read[i] / 2 > hexed_sz) {
+                    hexed_sz = batch_line_read[i] * 3;
+                    hexed = chkrealloc(hexed, hexed_sz);
+                  }
+                  hex(batch_line[i], batch_line_read[i], hexed, hexed_sz);
+                  strncpy(batch_line[i], hexed, batch_line_sz[i]);
+                }
+                fprintresult(ofile, &hash160, pubhashfn[j].id, modestr, batch_line[i]);
+                ++olines;
+              }
+            }
+            ++j;
+          }
+        } else {
+          if (xopt) {
+            if (batch_line_read[i] / 2 > hexed_sz) {
+              hexed_sz = batch_line_read[i] * 3;
+              hexed = chkrealloc(hexed, hexed_sz);
+            }
+            hex(batch_line[i], batch_line_read[i], hexed, hexed_sz);
+            strncpy(batch_line[i], hexed, batch_line_sz[i]);
+          }
+          while (pubhashfn[j].fn != NULL) {
+            pubhashfn[j].fn(&hash160, batch_upub[i]);
+            fprintresult(ofile, &hash160, pubhashfn[j].id, modestr, batch_line[i]);
+            ++j;
+          }
+        }
+      }
+      // end public key processing loop
+
+    }
+    // start stats
     if (vopt) {
-      ++ilines_curr;
-      if (line_read < 0 || (ilines_curr & report_mask) == 0) {
+      ilines_curr += batch_stopped;
+      if (batch_stopped < BATCH || (ilines_curr & report_mask) == 0) {
         time_curr = getns();
         time_delta = time_curr - time_last;
         time_elapsed = time_curr - time_start;
@@ -747,9 +795,9 @@ loop_update_stats:
         ilines_last = ilines_curr;
         ilines_rate = (ilines_delta * 1.0e9) / (time_delta * 1.0);
 
-        if (line_read < 0) {
+        if (batch_stopped < BATCH) {
           /* report overall average on last status update */
-          ilines_rate_avg = (--ilines_curr * 1.0e9) / (time_elapsed * 1.0);
+          ilines_rate_avg = (ilines_curr * 1.0e9) / (time_elapsed * 1.0);
         } else if (ilines_rate_avg < 0) {
           ilines_rate_avg = ilines_rate;
         /* target reporting frequency to about once every five seconds */
@@ -776,7 +824,7 @@ loop_update_stats:
             time_elapsed / 1.0e9
         );
 
-        if (line_read < 0) {
+        if (batch_stopped < BATCH) {
           fprintf(stderr, "\n");
           break;
         } else {
@@ -784,6 +832,7 @@ loop_update_stats:
         }
       }
     }
+    // end stats
   }
 
   return 0;

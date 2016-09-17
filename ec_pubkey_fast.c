@@ -22,6 +22,9 @@
 #include "secp256k1/src/group_impl.h"
 #include "secp256k1/src/ecmult_gen_impl.h"
 #include "secp256k1/src/ecmult.h"
+#include "secp256k1/src/eckey_impl.h"
+
+static int secp256k1_eckey_pubkey_parse(secp256k1_ge_t *elem, const unsigned char *pub, int size);
 
 #include "mmapf.h"
 
@@ -288,6 +291,107 @@ int secp256k1_ec_pubkey_create_precomp(unsigned char *pub_chr, int *pub_chr_sz, 
   return 0;
 }
 
+static secp256k1_gej_t *batchpj;
+static secp256k1_ge_t  *batchpa;
+
+int secp256k1_ec_pubkey_batch_init(unsigned int num) {
+  if (!batchpj) { batchpj = malloc(sizeof(secp256k1_gej_t)*num); }
+  if (!batchpa) { batchpa = malloc(sizeof(secp256k1_ge_t)*num);  }
+  if (batchpj == NULL || batchpa == NULL) {
+    return 1;
+  } else {
+    return 0;
+  }
+}
+
+// call secp256k1_ec_pubkey_batch_init first or you get segfaults
+int secp256k1_ec_pubkey_batch_incr(unsigned int num, unsigned int skip, unsigned char (*pub)[65], unsigned char (*sec)[32], unsigned char start[32]) {
+  // some of the values could be reused between calls, but dealing with the data
+  // structures is a pain, and with a reasonable batch size, the perf difference
+  // is tiny
+  int i;
+
+  unsigned char b32[32];
+
+  secp256k1_scalar_t priv, incr_s;
+  secp256k1_gej_t temp;
+  secp256k1_ge_t incr_a;
+
+  /* load staring private key */
+  secp256k1_scalar_set_b32(&priv, start, NULL);
+
+  /* fill first private */
+  secp256k1_scalar_get_b32(sec[0], &priv);
+
+  /* set up increments */
+  secp256k1_scalar_set_int(&incr_s, skip);
+  secp256k1_scalar_get_b32(b32, &incr_s);
+
+#ifdef USE_BL_ARITHMETIC
+  secp256k1_ecmult_gen_bl(&temp, b32);
+  secp256k1_ecmult_gen_bl(&batchpj[0], start);
+#else
+  secp256k1_ecmult_gen2(&temp, b32);
+  secp256k1_ecmult_gen2(&batchpj[0], start);
+#endif
+
+  /* get affine public point for incrementing */
+  secp256k1_ge_set_gej_var(&incr_a, &temp);
+
+  for (i = 1; i < num; ++i) {
+    /* increment and write private key */
+    secp256k1_scalar_add(&priv, &priv, &incr_s);
+    secp256k1_scalar_get_b32(sec[i], &priv);
+
+    /* increment public key */
+    secp256k1_gej_add_ge_var(&batchpj[i], &batchpj[i-1], &incr_a, NULL);
+  }
+
+  /* convernt all jacobian coordinates to affine */
+  secp256k1_ge_set_all_gej_var(num, batchpa, batchpj, NULL);
+
+  /* write out formatted public key */
+  for (i = 0; i < num; ++i) {
+    secp256k1_fe_normalize_var(&batchpa[i].x);
+    secp256k1_fe_normalize_var(&batchpa[i].y);
+
+    pub[i][0] = 0x04;
+    secp256k1_fe_get_b32(pub[i] +  1, &batchpa[i].x);
+    secp256k1_fe_get_b32(pub[i] + 33, &batchpa[i].y);
+  }
+
+  return 0;
+}
+
+// call secp256k1_ec_pubkey_batch_init first or you get segfaults
+int secp256k1_ec_pubkey_batch_create(unsigned int num, unsigned char (*pub)[65], unsigned char (*sec)[32]) {
+  int i;
+
+  /* generate jacobian coordinates */
+  for (i = 0; i < num; ++i) {
+#ifdef USE_BL_ARITHMETIC
+    secp256k1_ecmult_gen_bl(&batchpj[i], sec[i]);
+#else
+    secp256k1_ecmult_gen2(&batchpj[i], sec[i]);
+#endif
+  }
+
+  /* convernt all jacobian coordinates to affine */
+  secp256k1_ge_set_all_gej_var(num, batchpa, batchpj, NULL);
+
+  /* write out formatted public key */
+  for (i = 0; i < num; ++i) {
+    secp256k1_fe_normalize_var(&batchpa[i].x);
+    secp256k1_fe_normalize_var(&batchpa[i].y);
+
+    pub[i][0] = 0x04;
+    secp256k1_fe_get_b32(pub[i] +  1, &batchpa[i].x);
+    secp256k1_fe_get_b32(pub[i] + 33, &batchpa[i].y);
+  }
+
+  return 0;
+}
+
 inline static void _priv_add(unsigned char *priv, unsigned char add, int p) {
   priv[p] += add;
   if (priv[p] < add) {
@@ -365,4 +469,43 @@ int secp256k1_ec_pubkey_incr(unsigned char *pub_chr, int *pub_chr_sz, unsigned c
 
   return 0;
 }
+
+void * secp256k1_ec_priv_to_gej(unsigned char *priv) {
+  secp256k1_gej_t *gej = malloc(sizeof(secp256k1_gej_t));
+#ifdef USE_BL_ARITHMETIC
+  secp256k1_ecmult_gen_bl(gej, priv);
+#else
+  secp256k1_ecmult_gen2(gej, priv);
+#endif
+
+  return gej;
+}
+
+int secp256k1_ec_pubkey_add_gej(unsigned char *pub_chr, int *pub_chr_sz, void *add) {
+  secp256k1_ge_t  in;
+  secp256k1_ge_t  p;
+
+  secp256k1_gej_t out;
+
+  secp256k1_eckey_pubkey_parse(&in, pub_chr, *pub_chr_sz);
+
+#ifdef USE_BL_ARITHMETIC
+  secp256k1_gej_add_ge_bl(&out, (secp256k1_gej_t *)add, &in, NULL);
+#else
+  secp256k1_gej_add_ge_var(&out, (secp256k1_gej_t *)add, &in, NULL);
+#endif
+
+  secp256k1_ge_set_gej(&p, &out);
+
+  *pub_chr_sz = 65;
+  pub_chr[0] = 4;
+
+  secp256k1_fe_normalize_var(&p.x);
+  secp256k1_fe_normalize_var(&p.y);
+  secp256k1_fe_get_b32(pub_chr +  1, &p.x);
+  secp256k1_fe_get_b32(pub_chr + 33, &p.y);
+
+  return 0;
+}
+
 /*  vim: set ts=2 sw=2 et ai si: */
