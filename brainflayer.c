@@ -680,7 +680,7 @@ int main(int argc, char **argv) {
   for (;;) {
     if (Iopt) {
       if (skipping) {
-        priv_add_uint32(priv, nopt_rem);
+        priv_add_uint32(priv, nopt_rem + kopt);
         skipping = 0;
       }
       secp256k1_ec_pubkey_batch_incr(BATCH, nopt_mod, batch_upub, batch_priv, priv);
