@@ -384,7 +384,6 @@ int main(int argc, char **argv) {
   pubhashfn_t pubhashfn[8];
   memset(pubhashfn, 0, sizeof(pubhashfn));
 
-  char *line = NULL;
   int batch_stopped = -1;
   char *batch_line[BATCH_MAX];
   size_t batch_line_sz[BATCH_MAX];
@@ -511,7 +510,11 @@ int main(int argc, char **argv) {
       bail(1, "Cannot specify input type in incremental mode\n");
     }
     topt = "priv";
-    line = Iopt;
+    // normally, getline would allocate the batch_line entries, but we need to
+    // do this to give the processing loop somewhere to write to in incr mode
+    for (i = 0; i < BATCH_MAX; ++i) {
+      batch_line[i] = Iopt;
+    }
     unhex(Iopt, sizeof(priv)*2, priv, sizeof(priv));
     skipping = 1;
     if (!nopt_mod) { nopt_mod = 1; };
@@ -684,33 +687,7 @@ int main(int argc, char **argv) {
       memcpy(priv, batch_priv[BATCH-1], 32);
       priv_add_uint32(priv, nopt_mod);
 
-      // loop over keys
-      for (i = 0; i < BATCH; ++i) {
-        j = 0;
-        if (bloom) {
-          // loop over pubkey hash functions
-          while (pubhashfn[j].fn != NULL) {
-            pubhashfn[j].fn(&hash160, batch_upub[i]);
-            if (bloom_chk_hash160(bloom, hash160.ul)) {
-              if (!fopt || hsearchf(ffile, &hash160)) {
-                if (tty) { fprintf(ofile, "\033[0K"); }
-                hex(batch_priv[i], 32, line, 65);
-                fprintresult(ofile, &hash160, pubhashfn[j].id, modestr, line);
-                ++olines;
-              }
-            }
-            ++j;
-          }
-        } else {
-          hex(batch_priv[i], 32, line, 65);
-          while (pubhashfn[j].fn != NULL) {
-            pubhashfn[j].fn(&hash160, batch_upub[i]);
-            fprintresult(ofile, &hash160, pubhashfn[j].id, modestr, line);
-            ++j;
-          }
-        }
-      }
-      batch_stopped = i;
+      batch_stopped = BATCH;
     } else {
       for (i = 0; i < BATCH; ++i) {
         if ((batch_line_read[i] = getline(&batch_line[i], &batch_line_sz[i], ifile)-1) > -1) {
@@ -732,57 +709,62 @@ int main(int argc, char **argv) {
           fprintf(stderr, "input2priv failed! continuing...\n");
         }
       }
-      // save ending value from read loop
-      batch_stopped = i;
 
       // batch compute the public keys
       secp256k1_ec_pubkey_batch_create(BATCH, batch_upub, batch_priv);
 
-      // loop over the public keys
-      for (i = 0; i < batch_stopped; ++i) {
-        j = 0;
-        if (bloom) {
-          // loop over pubkey hash functions
-          while (pubhashfn[j].fn != NULL) {
-            pubhashfn[j].fn(&hash160, batch_upub[i]);
-            if (bloom_chk_hash160(bloom, hash160.ul)) {
-              if (!fopt || hsearchf(ffile, &hash160)) {
-                if (tty) { fprintf(ofile, "\033[0K"); }
-                if (Iopt) {
-                  hex(batch_priv[i], 32, batch_line[i], 65);
-                } else if (xopt) {
-                  if (batch_line_read[i] / 2 > hexed_sz) {
-                    hexed_sz = batch_line_read[i] * 3;
-                    hexed = chkrealloc(hexed, hexed_sz);
-                  }
-                  hex(batch_line[i], batch_line_read[i], hexed, hexed_sz);
-                  strncpy(batch_line[i], hexed, batch_line_sz[i]);
+      // save ending value from read loop
+      batch_stopped = i;
+    }
+
+    // loop over the public keys
+    for (i = 0; i < batch_stopped; ++i) {
+      j = 0;
+      if (bloom) { /* crack mode */
+        // loop over pubkey hash functions
+        while (pubhashfn[j].fn != NULL) {
+          pubhashfn[j].fn(&hash160, batch_upub[i]);
+          if (bloom_chk_hash160(bloom, hash160.ul)) {
+            if (!fopt || hsearchf(ffile, &hash160)) {
+              if (tty) { fprintf(ofile, "\033[0K"); }
+              // reformat/populate the line if required
+              if (Iopt) {
+                hex(batch_priv[i], 32, batch_line[i], 65);
+              } else if (xopt) {
+                if (batch_line_read[i] / 2 > hexed_sz) {
+                  hexed_sz = batch_line_read[i] * 3;
+                  hexed = chkrealloc(hexed, hexed_sz);
                 }
-                fprintresult(ofile, &hash160, pubhashfn[j].id, modestr, batch_line[i]);
-                ++olines;
+                hex(batch_line[i], batch_line_read[i], hexed, hexed_sz);
+                strncpy(batch_line[i], hexed, batch_line_sz[i]);
               }
+              fprintresult(ofile, &hash160, pubhashfn[j].id, modestr, batch_line[i]);
+              ++olines;
             }
-            ++j;
           }
-        } else {
-          if (xopt) {
-            if (batch_line_read[i] / 2 > hexed_sz) {
-              hexed_sz = batch_line_read[i] * 3;
-              hexed = chkrealloc(hexed, hexed_sz);
-            }
-            hex(batch_line[i], batch_line_read[i], hexed, hexed_sz);
-            strncpy(batch_line[i], hexed, batch_line_sz[i]);
+          ++j;
+        }
+      } else { /* generate mode */
+        // reformat/populate the line if required
+        if (Iopt) {
+          hex(batch_priv[i], 32, batch_line[i], 65);
+        } else if (xopt) {
+          if (batch_line_read[i] / 2 > hexed_sz) {
+            hexed_sz = batch_line_read[i] * 3;
+            hexed = chkrealloc(hexed, hexed_sz);
           }
-          while (pubhashfn[j].fn != NULL) {
-            pubhashfn[j].fn(&hash160, batch_upub[i]);
-            fprintresult(ofile, &hash160, pubhashfn[j].id, modestr, batch_line[i]);
-            ++j;
-          }
+          hex(batch_line[i], batch_line_read[i], hexed, hexed_sz);
+          strncpy(batch_line[i], hexed, batch_line_sz[i]);
+        }
+        while (pubhashfn[j].fn != NULL) {
+          pubhashfn[j].fn(&hash160, batch_upub[i]);
+          fprintresult(ofile, &hash160, pubhashfn[j].id, modestr, batch_line[i]);
+          ++j;
         }
       }
-      // end public key processing loop
-
     }
+    // end public key processing loop
+
     // start stats
     if (vopt) {
       ilines_curr += batch_stopped;
