@@ -33,8 +33,7 @@
 #include "algo/sha3.h"
 
 // raise this if you really want, but quickly diminishing returns
-#define BATCH_MAX 1024
-#define BATCH BATCH_MAX
+#define BATCH_MAX 4096
 
 static int brainflayer_is_init = 0;
 
@@ -341,13 +340,15 @@ void usage(unsigned char *name) {
                              at HEXPRIVKEY (supports -n) FAST\n\
  -k K                        skip the first K lines of input\n\
  -n K/N                      use only the Kth of every N input lines\n\
+ -B                          batch size for affine transformations\n\
+                             must be a power of 2 (default/max: %d)\n\
  -w WINDOW_SIZE              window size for ecmult table (default: 16)\n\
                              uses about 3 * 2^w KiB memory on startup, but\n\
                              only about 2^w KiB once the table is built\n\
  -m FILE                     load ecmult table from FILE\n\
                              the ecmtabgen tool can build such a table\n\
  -v                          verbose - display cracking progress\n\
- -h                          show this help\n", name);
+ -h                          show this help\n", name, BATCH_MAX);
 //q, --quiet                 suppress non-error messages
   exit(1);
 }
@@ -372,7 +373,7 @@ int main(int argc, char **argv) {
   unsigned char modestr[64];
 
   int spok = 0, aopt = 0, vopt = 0, wopt = 16, xopt = 0;
-  int nopt_mod = 0, nopt_rem = 0;
+  int nopt_mod = 0, nopt_rem = 0, Bopt = 0;
   uint64_t kopt = 0;
   unsigned char *bopt = NULL, *iopt = NULL, *oopt = NULL;
   unsigned char *topt = NULL, *sopt = NULL, *popt = NULL;
@@ -391,7 +392,7 @@ int main(int argc, char **argv) {
   unsigned char batch_priv[BATCH_MAX][32];
   unsigned char batch_upub[BATCH_MAX][65];
 
-  while ((c = getopt(argc, argv, "avxb:hi:k:f:m:n:o:p:s:r:c:t:w:I:L")) != -1) {
+  while ((c = getopt(argc, argv, "avxb:hi:k:f:m:n:o:p:s:r:c:t:w:I:B:")) != -1) {
     switch (c) {
       case 'a':
         aopt = 1; // open output file in append mode
@@ -406,6 +407,9 @@ int main(int argc, char **argv) {
         optarg = strchr(optarg, '/');
         if (optarg != NULL) { nopt_mod = atoi(optarg+1); }
         skipping = 1;
+        break;
+      case 'B':
+        Bopt = atoi(optarg);
         break;
       case 'w':
         if (wopt > 1) wopt = atoi(optarg);
@@ -502,6 +506,14 @@ int main(int argc, char **argv) {
     }
   }
 
+  if (Bopt) { // if unset, will be set later
+    if (Bopt < 1 || Bopt > BATCH_MAX) {
+      bail(1, "Invalid '-B' argument, batch size '%d' - must be >= 1 and <= %d\n", Bopt, BATCH_MAX);
+    } else if (Bopt & (Bopt - 1)) { // https://graphics.stanford.edu/~seander/bithacks.html#DetermineIfPowerOf2
+      bail(1, "Invalid '-B' argument, batch size '%d' is not a power of 2\n", Bopt);
+    }
+  }
+
   if (Iopt) {
     if (strlen(Iopt) != 64) {
       bail(1, "The starting key passed to the '-I' must be 64 hex digits exactly\n");
@@ -559,12 +571,15 @@ int main(int argc, char **argv) {
     }
     input2priv = &rawpriv2priv;
   } else if (strcmp(topt, "warp") == 0) {
+    if (!Bopt) { Bopt = 1; } // don't batch transform for slow input hashes by default
     spok = 1;
     input2priv = popt ? &warpsalt2priv : &warppass2priv;
   } else if (strcmp(topt, "bwio") == 0) {
+    if (!Bopt) { Bopt = 1; } // don't batch transform for slow input hashes by default
     spok = 1;
     input2priv = popt ? &bwiosalt2priv : &bwiopass2priv;
   } else if (strcmp(topt, "bv2") == 0) {
+    if (!Bopt) { Bopt = 1; } // don't batch transform for slow input hashes by default
     spok = 1;
     input2priv = popt ? &brainv2salt2priv : &brainv2pass2priv;
   } else if (strcmp(topt, "rush") == 0) {
@@ -677,19 +692,22 @@ int main(int argc, char **argv) {
     time_start = time_last = 0; // prevent compiler warning about uninitialized use
   }
 
+  // set default batch size
+  if (!Bopt) { Bopt = BATCH_MAX; }
+
   for (;;) {
     if (Iopt) {
       if (skipping) {
         priv_add_uint32(priv, nopt_rem + kopt);
         skipping = 0;
       }
-      secp256k1_ec_pubkey_batch_incr(BATCH, nopt_mod, batch_upub, batch_priv, priv);
-      memcpy(priv, batch_priv[BATCH-1], 32);
+      secp256k1_ec_pubkey_batch_incr(Bopt, nopt_mod, batch_upub, batch_priv, priv);
+      memcpy(priv, batch_priv[Bopt-1], 32);
       priv_add_uint32(priv, nopt_mod);
 
-      batch_stopped = BATCH;
+      batch_stopped = Bopt;
     } else {
-      for (i = 0; i < BATCH; ++i) {
+      for (i = 0; i < Bopt; ++i) {
         if ((batch_line_read[i] = getline(&batch_line[i], &batch_line_sz[i], ifile)-1) > -1) {
           if (skipping) {
             ++raw_lines;
@@ -711,7 +729,7 @@ int main(int argc, char **argv) {
       }
 
       // batch compute the public keys
-      secp256k1_ec_pubkey_batch_create(BATCH, batch_upub, batch_priv);
+      secp256k1_ec_pubkey_batch_create(Bopt, batch_upub, batch_priv);
 
       // save ending value from read loop
       batch_stopped = i;
@@ -768,7 +786,7 @@ int main(int argc, char **argv) {
     // start stats
     if (vopt) {
       ilines_curr += batch_stopped;
-      if (batch_stopped < BATCH || (ilines_curr & report_mask) == 0) {
+      if (batch_stopped < Bopt || (ilines_curr & report_mask) == 0) {
         time_curr = getns();
         time_delta = time_curr - time_last;
         time_elapsed = time_curr - time_start;
@@ -777,7 +795,7 @@ int main(int argc, char **argv) {
         ilines_last = ilines_curr;
         ilines_rate = (ilines_delta * 1.0e9) / (time_delta * 1.0);
 
-        if (batch_stopped < BATCH) {
+        if (batch_stopped < Bopt) {
           /* report overall average on last status update */
           ilines_rate_avg = (ilines_curr * 1.0e9) / (time_elapsed * 1.0);
         } else if (ilines_rate_avg < 0) {
@@ -806,7 +824,7 @@ int main(int argc, char **argv) {
             time_elapsed / 1.0e9
         );
 
-        if (batch_stopped < BATCH) {
+        if (batch_stopped < Bopt) {
           fprintf(stderr, "\n");
           break;
         } else {
