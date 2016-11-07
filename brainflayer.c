@@ -164,6 +164,24 @@ static int keccak2priv(unsigned char *priv, unsigned char *pass, size_t pass_sz)
   return 0;
 }
 
+/* ether.camp "2031 passes of SHA-3 (Keccak)" */
+static int camp2priv(unsigned char *priv, unsigned char *pass, size_t pass_sz) {
+  SHA3_256_CTX ctx;
+  int i;
+
+  KECCAK_256_Init(&ctx);
+  KECCAK_256_Update(&ctx, pass, pass_sz);
+  KECCAK_256_Final(priv, &ctx);
+
+  for (i = 1; i < 2031; ++i) {
+    KECCAK_256_Init(&ctx);
+    KECCAK_256_Update(&ctx, priv, 32);
+    KECCAK_256_Final(priv, &ctx);
+  }
+
+  return 0;
+}
+
 static int sha32priv(unsigned char *priv, unsigned char *pass, size_t pass_sz) {
   SHA3_256_CTX ctx;
 
@@ -331,6 +349,7 @@ void usage(unsigned char *name) {
                              bv2    - brainv2 (supports -s or -p) VERY SLOW\n\
                              rush   - rushwallet (requires -r) FAST\n\
                              keccak - keccak256 (ethercamp/old ethaddress)\n\
+                             camp2  - keccak256 * 2031 (new ethercamp)\n\
  -x                          treat input as hex encoded\n\
  -s SALT                     use SALT for salted input types (default: none)\n\
  -p PASSPHRASE               use PASSPHRASE for salted input types, inputs\n\
@@ -584,6 +603,8 @@ int main(int argc, char **argv) {
     input2priv = popt ? &brainv2salt2priv : &brainv2pass2priv;
   } else if (strcmp(topt, "rush") == 0) {
     input2priv = &rush2priv;
+  } else if (strcmp(topt, "camp2") == 0) {
+    input2priv = &camp2priv;
   } else if (strcmp(topt, "keccak") == 0) {
     input2priv = &keccak2priv;
   } else if (strcmp(topt, "sha3") == 0) {
