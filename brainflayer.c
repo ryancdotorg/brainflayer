@@ -47,8 +47,8 @@ static unsigned char *mem;
 static mmapf_ctx bloom_mmapf;
 static unsigned char *bloom = NULL;
 
-static unsigned char *hexed = NULL;
-static size_t hexed_sz = 4096;
+static unsigned char *unhexed = NULL;
+static size_t unhexed_sz = 4096;
 
 #define bail(code, ...) \
 do { \
@@ -88,7 +88,7 @@ static inline void brainflayer_init_globals() {
   if (!brainflayer_is_init) {
     /* initialize buffers */
     mem = chkmalloc(4096);
-    hexed = chkmalloc(hexed_sz);
+    unhexed = chkmalloc(unhexed_sz);
 
     /* set the flag */
     brainflayer_is_init = 1;
@@ -738,14 +738,21 @@ int main(int argc, char **argv) {
         } else {
           break;
         }
-        if (xopt) {
-          // rewrite the input line from hex
-          unhex(batch_line[i], batch_line_read[i], batch_line[i], batch_line_sz[i]);
-          batch_line_read[i] /= 2;
-        }
         batch_line[i][batch_line_read[i]] = 0;
-        if (input2priv(batch_priv[i], batch_line[i], batch_line_read[i]) != 0) {
-          fprintf(stderr, "input2priv failed! continuing...\n");
+        if (xopt) {
+          if (batch_line_read[i] / 2 > unhexed_sz) {
+            unhexed_sz = batch_line_read[i];
+            unhexed = chkrealloc(unhexed, unhexed_sz);
+          }
+          // rewrite the input line from hex
+          unhex(batch_line[i], batch_line_read[i], unhexed, unhexed_sz);
+          if (input2priv(batch_priv[i], unhexed, batch_line_read[i]/2) != 0) {
+            fprintf(stderr, "input2priv failed! continuing...\n");
+          }
+        } else {
+          if (input2priv(batch_priv[i], batch_line[i], batch_line_read[i]) != 0) {
+            fprintf(stderr, "input2priv failed! continuing...\n");
+          }
         }
       }
 
@@ -769,13 +776,6 @@ int main(int argc, char **argv) {
               // reformat/populate the line if required
               if (Iopt) {
                 hex(batch_priv[i], 32, batch_line[i], 65);
-              } else if (xopt) {
-                if (batch_line_read[i] / 2 > hexed_sz) {
-                  hexed_sz = batch_line_read[i] * 3;
-                  hexed = chkrealloc(hexed, hexed_sz);
-                }
-                hex(batch_line[i], batch_line_read[i], hexed, hexed_sz);
-                strncpy(batch_line[i], hexed, batch_line_sz[i]);
               }
               fprintresult(ofile, &hash160, pubhashfn[j].id, modestr, batch_line[i]);
               ++olines;
@@ -787,13 +787,6 @@ int main(int argc, char **argv) {
         // reformat/populate the line if required
         if (Iopt) {
           hex(batch_priv[i], 32, batch_line[i], 65);
-        } else if (xopt) {
-          if (batch_line_read[i] / 2 > hexed_sz) {
-            hexed_sz = batch_line_read[i] * 3;
-            hexed = chkrealloc(hexed, hexed_sz);
-          }
-          hex(batch_line[i], batch_line_read[i], hexed, hexed_sz);
-          strncpy(batch_line[i], hexed, batch_line_sz[i]);
         }
         while (pubhashfn[j].fn != NULL) {
           pubhashfn[j].fn(&hash160, batch_upub[i]);
