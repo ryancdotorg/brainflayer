@@ -36,11 +36,11 @@ scrypt-jane/scrypt-jane.o: scrypt-jane/scrypt-jane.h scrypt-jane/scrypt-jane.c
 
 brainflayer.o: brainflayer.c secp256k1/include/secp256k1.h
 
-format/warpwallet.o: format/warpwallet.c scrypt-jane/scrypt-jane.h
+algo/warpwallet.o: algo/warpwallet.c scrypt-jane/scrypt-jane.h
 
-format/brainwalletio.o: format/brainwalletio.c scrypt-jane/scrypt-jane.h
+algo/brainwalletio.o: algo/brainwalletio.c scrypt-jane/scrypt-jane.h
 
-format/brainv2.o: format/brainv2.c scrypt-jane/scrypt-jane.h
+algo/brainv2.o: algo/brainv2.c scrypt-jane/scrypt-jane.h
 
 ec_pubkey_fast.o: ec_pubkey_fast.c secp256k1/include/secp256k1.h
 	$(COMPILE) -Wno-unused-function -c $< -o $@
