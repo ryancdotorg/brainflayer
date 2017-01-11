@@ -845,15 +845,16 @@ int main(int argc, char **argv) {
             time_elapsed / 1.0e9
         );
 
-        if (batch_stopped < Bopt) {
-          fprintf(stderr, "\n");
-          break;
-        } else {
-          fflush(stderr);
-        }
+        fflush(stderr);
       }
     }
     // end stats
+
+    // main loop exit condition
+    if (batch_stopped < Bopt) {
+      if (vopt) { fprintf(stderr, "\n"); }
+      break;
+    }
   }
 
   return 0;
