@@ -8,6 +8,8 @@ int secp256k1_ec_pubkey_create_precomp(unsigned char *, int *, const unsigned ch
 int secp256k1_ec_pubkey_incr_init(unsigned char *, unsigned int);
 int secp256k1_ec_pubkey_incr(unsigned char *, int *, unsigned char *);
 
+int secp256k1_scalar_add_b32(void *, void *, void *);
+
 void priv_add_uint8(unsigned char *, unsigned char);
 void priv_add_uint32(unsigned char *, unsigned int);
 

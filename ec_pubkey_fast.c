@@ -392,6 +392,17 @@ int secp256k1_ec_pubkey_batch_create(unsigned int num, unsigned char (*pub)[65],
   return 0;
 }
 
+int secp256k1_scalar_add_b32(void * out, void * a, void *b) {
+  secp256k1_scalar_t tmp_a, tmp_b;
+
+  secp256k1_scalar_set_b32(&tmp_a, a, NULL);
+  secp256k1_scalar_set_b32(&tmp_b, b, NULL);
+  secp256k1_scalar_add(&tmp_a, &tmp_a, &tmp_b);
+  secp256k1_scalar_get_b32(out, &tmp_a);
+
+  return 0;
+}
+
 inline static void _priv_add(unsigned char *priv, unsigned char add, int p) {
   priv[p] += add;
   if (priv[p] < add) {
