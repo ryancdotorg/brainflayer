@@ -293,31 +293,14 @@ int secp256k1_ec_pubkey_create_precomp(unsigned char *pub_chr, int *pub_chr_sz, 
 
 static secp256k1_gej_t *batchpj;
 static secp256k1_ge_t  *batchpa;
-static secp256k1_fe_t  *batchaz;
-static secp256k1_fe_t  *batchai;
 
 int secp256k1_ec_pubkey_batch_init(unsigned int num) {
   if (!batchpj) { batchpj = malloc(sizeof(secp256k1_gej_t)*num); }
   if (!batchpa) { batchpa = malloc(sizeof(secp256k1_ge_t)*num);  }
-  if (!batchaz) { batchaz = malloc(sizeof(secp256k1_fe_t)*num);  }
-  if (!batchai) { batchai = malloc(sizeof(secp256k1_fe_t)*num);  }
-  if (batchpj == NULL || batchpa == NULL || batchaz == NULL || batchai == NULL) {
+  if (batchpj == NULL || batchpa == NULL) {
     return 1;
   } else {
     return 0;
-  }
-}
-
-void secp256k1_ge_set_all_gej_static(int num, secp256k1_ge_t *batchpa, secp256k1_gej_t *batchpj) {
-  size_t i;
-  for (i = 0; i < num; i++) {
-    batchaz[i] = batchpj[i].z;
-  }
-
-  secp256k1_fe_inv_all_var(num, batchai, batchaz);
-
-  for (i = 0; i < num; i++) {
-    secp256k1_ge_set_gej_zinv(&batchpa[i], &batchpj[i], &batchai[i]);
   }
 }
 
@@ -364,8 +347,8 @@ int secp256k1_ec_pubkey_batch_incr(unsigned int num, unsigned int skip, unsigned
     secp256k1_gej_add_ge_var(&batchpj[i], &batchpj[i-1], &incr_a, NULL);
   }
 
-  /* convert all jacobian coordinates to affine */
-  secp256k1_ge_set_all_gej_static(num, batchpa, batchpj);
+  /* convernt all jacobian coordinates to affine */
+  secp256k1_ge_set_all_gej_var(num, batchpa, batchpj, NULL);
 
   /* write out formatted public key */
   for (i = 0; i < num; ++i) {
@@ -393,8 +376,8 @@ int secp256k1_ec_pubkey_batch_create(unsigned int num, unsigned char (*pub)[65],
 #endif
   }
 
-  /* convert all jacobian coordinates to affine */
-  secp256k1_ge_set_all_gej_static(num, batchpa, batchpj);
+  /* convernt all jacobian coordinates to affine */
+  secp256k1_ge_set_all_gej_var(num, batchpa, batchpj, NULL);
 
   /* write out formatted public key */
   for (i = 0; i < num; ++i) {
