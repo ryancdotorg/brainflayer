@@ -297,6 +297,26 @@ static int rush2priv(unsigned char *priv, unsigned char *pass, size_t pass_sz) {
   return 0;
 }
 
+// https://en.bitcoin.it/wiki/Mini_private_key_format
+static int mini2priv(unsigned char *priv, unsigned char *pass, size_t pass_sz) {
+  SHA256_CTX ctx;
+
+  // validate prefix and length
+  if (pass[0] != 'S' || (pass_sz != 30 && pass_sz != 22)) { return -1; }
+  // spec says base58 characters, but not gonna bother checking that
+
+  // calculated validation hash to determined whether the key is well-formed
+  pass[pass_sz] = '?';
+  SHA256_Init(&ctx);
+  SHA256_Update(&ctx, pass, pass_sz + 1);
+  SHA256_Final(priv, &ctx);
+  pass[pass_sz] = '\0';
+  // check the hash result
+  if (priv[0] != '\0') { return -1; }
+
+  return pass2priv(priv, pass, pass_sz);
+}
+
 inline static int priv_incr(unsigned char *upub, unsigned char *priv) {
   int sz;
 
@@ -342,6 +362,7 @@ void usage(unsigned char *name) {
                              x - most signifigant bits of x coordinate\n\
  -t TYPE                     inputs are TYPE - supported types:\n\
                              sha256 (default) - classic brainwallet\n\
+                             mini   - Casascius mini private key format\n\
                              sha3   - sha3-256\n\
                              priv   - raw private keys (requires -x)\n\
                              warp   - WarpWallet (supports -s or -p)\n\
@@ -585,6 +606,8 @@ int main(int argc, char **argv) {
 
   if (strcmp(topt, "sha256") == 0) {
     input2priv = &pass2priv;
+  } else if (strcmp(topt, "mini") == 0) {
+    input2priv = &mini2priv;
   } else if (strcmp(topt, "priv") == 0) {
     if (!xopt) {
       bail(1, "raw private key input requires -x");
