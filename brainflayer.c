@@ -381,7 +381,8 @@ int main(int argc, char **argv) {
 
   float alpha, ilines_rate, ilines_rate_avg;
   int64_t raw_lines = -1;
-  uint64_t report_mask = 0;
+  uint64_t report_next = 0;
+  uint64_t report_intr = 1;
   uint64_t time_last, time_curr, time_delta;
   uint64_t time_start, time_elapsed;
   uint64_t ilines_last, ilines_curr, ilines_delta;
@@ -747,11 +748,15 @@ int main(int argc, char **argv) {
           // rewrite the input line from hex
           unhex(batch_line[i], batch_line_read[i], unhexed, unhexed_sz);
           if (input2priv(batch_priv[i], unhexed, batch_line_read[i]/2) != 0) {
-            fprintf(stderr, "input2priv failed! continuing...\n");
+            //fprintf(stderr, "input2priv failed! continuing...\n");
+            // skip this key
+            ++ilines_curr; --i;
           }
         } else {
           if (input2priv(batch_priv[i], batch_line[i], batch_line_read[i]) != 0) {
-            fprintf(stderr, "input2priv failed! continuing...\n");
+            //fprintf(stderr, "input2priv failed! continuing...\n");
+            // skip this key
+            ++ilines_curr; --i;
           }
         }
       }
@@ -800,7 +805,7 @@ int main(int argc, char **argv) {
     // start stats
     if (vopt) {
       ilines_curr += batch_stopped;
-      if (batch_stopped < Bopt || (ilines_curr & report_mask) == 0) {
+      if (batch_stopped < Bopt || ilines_curr >= report_next) {
         time_curr = getns();
         time_delta = time_curr - time_last;
         time_elapsed = time_curr - time_start;
@@ -816,15 +821,17 @@ int main(int argc, char **argv) {
           ilines_rate_avg = ilines_rate;
         /* target reporting frequency to about once every five seconds */
         } else if (time_delta < 2500000000) {
-          report_mask = (report_mask << 1) | 1;
+          report_intr = report_intr << 1;
           ilines_rate_avg = ilines_rate; /* reset EMA */
         } else if (time_delta > 10000000000) {
-          report_mask >>= 1;
+          if (report_intr > 1) { report_intr >>= 1; }
           ilines_rate_avg = ilines_rate; /* reset EMA */
         } else {
           /* exponetial moving average */
           ilines_rate_avg = alpha * ilines_rate + (1 - alpha) * ilines_rate_avg;
         }
+
+        report_next = ilines_curr + report_intr;
 
         fprintf(stderr,
             "\033[0G\033[2K"
