@@ -1,10 +1,14 @@
 HEADERS = bloom.h crack.h hash160.h warpwallet.h
-OBJ_MAIN = brainflayer.o hex2blf.o blfchk.o ecmtabgen.o hexln.o filehex.o
-OBJ_UTIL = hex.o bloom.o mmapf.o hsearchf.o ec_pubkey_fast.o ripemd160_256.o dldummy.o
+OBJ_MAIN = brainflayer.o hex2blf.o blfchk.o ecmtabgen.o hexln.o sha256ln.o filehex.o
+OBJ_UTIL = hex.o bloom.o mmapf.o hsearchf.o ec_pubkey_fast.o dldummy.o
 OBJ_ALGO = $(patsubst %.c,%.o,$(wildcard algo/*.c))
-OBJECTS = $(OBJ_MAIN) $(OBJ_UTIL) $(OBJ_ALGO)
-BINARIES = brainflayer hexln hex2blf blfchk ecmtabgen filehex
-LIBS = -lssl -lrt -lcrypto -lz -lgmp
+OBJ_SHA256 = sha256/sha256.o
+ifeq ($(shell uname -m),x86_64)
+    OBJ_SHA256 += sha256/sha256-avx-asm.o sha256/sha256-avx2-asm.o sha256/sha256-ssse3-asm.o sha256/sha256-ni-asm.o
+endif
+OBJECTS = $(OBJ_MAIN) $(OBJ_UTIL) $(OBJ_ALGO) $(OBJ_SHA256)
+BINARIES = brainflayer hexln sha256ln hex2blf blfchk ecmtabgen filehex
+LIBS = -lrt -lcrypto -lz -lgmp
 CFLAGS = -O3 \
          -flto -funsigned-char -falign-functions=16 -falign-loops=16 -falign-jumps=16 \
          -Wall -Wextra -Wno-pointer-sign -Wno-sign-compare \
@@ -16,6 +20,9 @@ all: $(BINARIES)
 .git:
 	@echo 'This does not look like a cloned git repo. Unable to fetch submodules.'
 	@false
+
+sha256/sha256-%-asm.o: sha256/sha256-%-asm.S sha256/sha256-%-stub.S
+	$(COMPILE) -c $< -o $@ >/dev/null 2>/dev/null || $(COMPILE) -c $(subst asm,stub,$<) -o $@
 
 secp256k1/.libs/libsecp256k1.a: .git
 	git submodule init
@@ -51,6 +58,9 @@ ec_pubkey_fast.o: ec_pubkey_fast.c secp256k1/include/secp256k1.h
 hexln: hexln.o hex.o
 	$(COMPILE) -static $^ $(LIBS) -o $@
 
+sha256ln: sha256ln.o hex.o $(OBJ_SHA256)
+	$(COMPILE) -static $^ $(LIBS) -o $@
+
 blfchk: blfchk.o hex.o bloom.o mmapf.o hsearchf.o
 	$(COMPILE) -static $^ $(LIBS) -o $@
 
@@ -63,7 +73,7 @@ ecmtabgen: ecmtabgen.o mmapf.o ec_pubkey_fast.o
 filehex: filehex.o hex.o
 	$(COMPILE) -static $^ $(LIBS) -o $@
 
-brainflayer: brainflayer.o $(OBJ_UTIL) $(OBJ_ALGO) \
+brainflayer: brainflayer.o $(OBJ_UTIL) $(OBJ_ALGO) $(OBJ_SHA256) \
              secp256k1/.libs/libsecp256k1.a scrypt-jane/scrypt-jane.o
 	$(COMPILE) -static $^ $(LIBS) -o $@
 

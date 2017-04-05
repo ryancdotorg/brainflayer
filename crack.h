@@ -2,8 +2,13 @@
 #ifndef __BRAINFLAYER_CRACK_H_
 #define __BRAINFLAYER_CRACK_H_
 
-#include <openssl/sha.h>
-#include <openssl/ripemd.h>
+#ifndef SHA256_DIGEST_LENGTH
+#define SHA256_DIGEST_LENGTH 32
+#endif//SHA256_DIGEST_LENGTH
+
+#ifndef RIPEMD160_DIGEST_LENGTH
+#define RIPEMD160_DIGEST_LENGTH 20
+#endif//RIPEMD160_DIGEST_LENGTH
 
 #define PWF_BUF_SZ 1024
 

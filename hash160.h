@@ -2,8 +2,7 @@
 #ifndef __BRAINFLAYER_HASH160_H_
 #define __BRAINFLAYER_HASH160_H_
 
-#include <openssl/sha.h>
-#include <openssl/ripemd.h>
+#define RIPEMD160_DIGEST_LENGTH 20
 
 typedef union hash160_u {
   unsigned char uc[RIPEMD160_DIGEST_LENGTH];

@@ -10,14 +10,12 @@
 #include <fcntl.h>
 #include <errno.h>
 
-#include <openssl/sha.h>
-
 #include <sys/time.h>
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/sysinfo.h>
 
-#include "ripemd160_256.h"
+#include "sha256/sha256.h"
 
 #include "ec_pubkey_fast.h"
 
@@ -86,6 +84,7 @@ uint64_t getns() {
 static inline void brainflayer_init_globals() {
   /* only initialize stuff once */
   if (!brainflayer_is_init) {
+    SHA2_256_Register();
     /* initialize buffers */
     mem = chkmalloc(4096);
     unhexed = chkmalloc(unhexed_sz);
@@ -100,28 +99,16 @@ static int (*input2priv)(unsigned char *, unsigned char *, size_t);
 
 /* bitcoin uncompressed address */
 static void uhash160(hash160_t *h, const unsigned char *upub) {
-  SHA256_CTX ctx;
-  unsigned char hash[SHA256_DIGEST_LENGTH];
-
-  SHA256_Init(&ctx);
-  SHA256_Update(&ctx, upub, 65);
-  SHA256_Final(hash, &ctx);
-  ripemd160_256(hash, h->uc);
+  Hash160_65(h->uc, upub);
 }
 
 /* bitcoin compressed address */
 static void chash160(hash160_t *h, const unsigned char *upub) {
-  SHA256_CTX ctx;
-  unsigned char cpub[33];
-  unsigned char hash[SHA256_DIGEST_LENGTH];
+  unsigned char *cpub = (unsigned char *)upub;
 
-  /* quick and dirty public key compression */
-  cpub[0] = 0x02 | (upub[64] & 0x01);
-  memcpy(cpub + 1, upub + 1, 32);
-  SHA256_Init(&ctx);
-  SHA256_Update(&ctx, cpub, 33);
-  SHA256_Final(hash, &ctx);
-  ripemd160_256(hash, h->uc);
+  cpub[0] = 0x02 | (upub[64] & 0x01); // quick and dirty public key compression
+  Hash160_33(h->uc, cpub);
+  cpub[0] = 0x04; // restore public key header byte
 }
 
 /* ethereum address */
@@ -145,11 +132,11 @@ static void xhash160(hash160_t *h, const unsigned char *upub) {
 
 
 static int pass2priv(unsigned char *priv, unsigned char *pass, size_t pass_sz) {
-  SHA256_CTX ctx;
+  SHA2_256_CTX ctx;
 
-  SHA256_Init(&ctx);
-  SHA256_Update(&ctx, pass, pass_sz);
-  SHA256_Final(priv, &ctx);
+  SHA2_256_Init(&ctx);
+  SHA2_256_Update(&ctx, pass, pass_sz);
+  SHA2_256_Final(priv, &ctx);
 
   return 0;
 }
@@ -275,21 +262,21 @@ static int brainv2salt2priv(unsigned char *priv, unsigned char *salt, size_t sal
 
 static unsigned char rushchk[5];
 static int rush2priv(unsigned char *priv, unsigned char *pass, size_t pass_sz) {
-  SHA256_CTX ctx;
+  SHA2_256_CTX ctx;
   unsigned char hash[SHA256_DIGEST_LENGTH];
   unsigned char userpasshash[SHA256_DIGEST_LENGTH*2+1];
 
-  SHA256_Init(&ctx);
-  SHA256_Update(&ctx, pass, pass_sz);
-  SHA256_Final(hash, &ctx);
+  SHA2_256_Init(&ctx);
+  SHA2_256_Update(&ctx, pass, pass_sz);
+  SHA2_256_Final(hash, &ctx);
 
   hex(hash, sizeof(hash), userpasshash, sizeof(userpasshash));
 
-  SHA256_Init(&ctx);
+  SHA2_256_Init(&ctx);
   // kdfsalt should be the fragment up to the !
-  SHA256_Update(&ctx, kdfsalt, kdfsalt_sz);
-  SHA256_Update(&ctx, userpasshash, 64);
-  SHA256_Final(priv, &ctx);
+  SHA2_256_Update(&ctx, kdfsalt, kdfsalt_sz);
+  SHA2_256_Update(&ctx, userpasshash, 64);
+  SHA2_256_Final(priv, &ctx);
 
   // early exit if the checksum doesn't match
   if (memcmp(priv, rushchk, sizeof(rushchk)) != 0) { return -1; }
@@ -299,7 +286,7 @@ static int rush2priv(unsigned char *priv, unsigned char *pass, size_t pass_sz) {
 
 // https://en.bitcoin.it/wiki/Mini_private_key_format
 static int mini2priv(unsigned char *priv, unsigned char *pass, size_t pass_sz) {
-  SHA256_CTX ctx;
+  SHA2_256_CTX ctx;
 
   // validate prefix and length
   if (pass[0] != 'S' || (pass_sz != 30 && pass_sz != 22)) { return -1; }
@@ -307,9 +294,9 @@ static int mini2priv(unsigned char *priv, unsigned char *pass, size_t pass_sz) {
 
   // calculated validation hash to determined whether the key is well-formed
   pass[pass_sz] = '?';
-  SHA256_Init(&ctx);
-  SHA256_Update(&ctx, pass, pass_sz + 1);
-  SHA256_Final(priv, &ctx);
+  SHA2_256_Init(&ctx);
+  SHA2_256_Update(&ctx, pass, pass_sz + 1);
+  SHA2_256_Final(priv, &ctx);
   pass[pass_sz] = '\0';
   // check the hash result
   if (priv[0] != '\0') { return -1; }
