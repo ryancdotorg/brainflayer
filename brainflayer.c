@@ -179,31 +179,42 @@ static int sha32priv(unsigned char *priv, unsigned char *pass, size_t pass_sz) {
   return 0;
 }
 
-/*
-static int dicap2hash160(unsigned char *pass, size_t pass_sz) {
-  SHA3_256_CTX ctx;
+/* Parity Wallet https://archive.is/O1RBi https://web.archive.org/web/20170507173411/https://github.com/ethereum/wiki/wiki/Brain-Wallet */
+static int parity2priv(unsigned char *priv, unsigned char *pass, size_t pass_sz) {
+  unsigned char hash[32];
+  unsigned char epub[65];
 
-  int i, ret;
+  SHA3_256_CTX ctx;
+  int i, sz;
 
   KECCAK_256_Init(&ctx);
   KECCAK_256_Update(&ctx, pass, pass_sz);
-  KECCAK_256_Final(priv256, &ctx);
+  KECCAK_256_Final(priv, &ctx);
+
   for (i = 0; i < 16384; ++i) {
     KECCAK_256_Init(&ctx);
-    KECCAK_256_Update(&ctx, priv256, 32);
-    KECCAK_256_Final(priv256, &ctx);
+    KECCAK_256_Update(&ctx, priv, 32);
+    KECCAK_256_Final(priv, &ctx);
   }
 
-  for (;;) {
-    ret = priv2hash160(priv256);
-    if (hash160_uncmp.uc[0] == 0) { break; }
+  do {
     KECCAK_256_Init(&ctx);
-    KECCAK_256_Update(&ctx, priv256, 32);
-    KECCAK_256_Final(priv256, &ctx);
-  }
-  return ret;
+    KECCAK_256_Update(&ctx, priv, 32);
+    KECCAK_256_Final(priv, &ctx);
+
+    // XXX Parity Wallet verifies that the private key is well formed here, but
+    // we don't bother because anything smaller than the following is fine
+    // fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141
+
+    secp256k1_ec_pubkey_create_precomp(epub, &sz, priv);
+
+    KECCAK_256_Init(&ctx);
+    KECCAK_256_Update(&ctx, epub+1, 64);
+    KECCAK_256_Final(hash, &ctx);
+  } while (hash[12] != 0);
+
+  return 0;
 }
-*/
 
 static int rawpriv2priv(unsigned char *priv, unsigned char *rawpriv, size_t rawpriv_sz) {
   memcpy(priv, rawpriv, rawpriv_sz);
@@ -358,6 +369,7 @@ void usage(unsigned char *name) {
                              rush   - rushwallet (requires -r) FAST\n\
                              keccak - keccak256 (ethercamp/old ethaddress)\n\
                              camp2  - keccak256 * 2031 (new ethercamp)\n\
+                             parity - Parity Wallet 'recovery phrase'\n\
  -x                          treat input as hex encoded\n\
  -s SALT                     use SALT for salted input types (default: none)\n\
  -p PASSPHRASE               use PASSPHRASE for salted input types, inputs\n\
@@ -616,6 +628,9 @@ int main(int argc, char **argv) {
     input2priv = &rush2priv;
   } else if (strcmp(topt, "camp2") == 0) {
     input2priv = &camp2priv;
+  } else if (strcmp(topt, "parity") == 0) {
+    if (!Bopt) { Bopt = 1; } // don't batch transform for slow input hashes by default
+    input2priv = &parity2priv;
   } else if (strcmp(topt, "keccak") == 0) {
     input2priv = &keccak2priv;
   } else if (strcmp(topt, "sha3") == 0) {
