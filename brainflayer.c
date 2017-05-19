@@ -105,10 +105,12 @@ static void uhash160(hash160_t *h, const unsigned char *upub) {
 /* bitcoin compressed address */
 static void chash160(hash160_t *h, const unsigned char *upub) {
   unsigned char *cpub = (unsigned char *)upub;
+  unsigned char hdr;
 
+  hdr = upub[0]; // save public key header byte
   cpub[0] = 0x02 | (upub[64] & 0x01); // quick and dirty public key compression
   Hash160_33(h->uc, cpub);
-  cpub[0] = 0x04; // restore public key header byte
+  cpub[0] = hdr; // restore public key header byte
 }
 
 /* ethereum address */
