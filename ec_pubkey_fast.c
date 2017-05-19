@@ -178,6 +178,7 @@ static void secp256k1_ecmult_gen2(secp256k1_gej_t *r, const unsigned char *secke
   }
 }
 
+#define USE_BL_ARITHMETIC 1
 #ifdef USE_BL_ARITHMETIC
 static void secp256k1_gej_add_ge_bl(secp256k1_gej_t *r, const secp256k1_gej_t *a, const secp256k1_ge_t *b, secp256k1_fe_t *rzr) {
   secp256k1_fe_t z1z1, /*z1,*/ u2, x1, y1, t0, s2, h, hh, i, j, t1, rr,  v, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11;
