@@ -45,6 +45,24 @@ static uint8_t rmd160_256[64] = {
   0x00, 0x01, 0x00, 0x00,   0x00, 0x00, 0x00, 0x00
 };
 
+// caller is responsible for padding
+inline void Hash160_Raw(uint8_t hash[], const uint8_t data[], uint64_t nblk) {
+  uint32_t *rmd160_in = (uint32_t *)rmd160_256;
+  uint32_t state[8] = {
+    0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+    0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
+  };
+
+  sha256_transform_func(state, data, nblk);
+
+  rmd160_in[0] = be32(state[0]); rmd160_in[1] = be32(state[1]);
+  rmd160_in[2] = be32(state[2]); rmd160_in[3] = be32(state[3]);
+  rmd160_in[4] = be32(state[4]); rmd160_in[5] = be32(state[5]);
+  rmd160_in[6] = be32(state[6]); rmd160_in[7] = be32(state[7]);
+
+  ripemd160_rawcompress(rmd160_256, hash);
+}
+
 static uint8_t input25[64] = {
   0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,
@@ -58,23 +76,8 @@ static uint8_t input25[64] = {
   0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0xc8
 };
 void Hash160_25(uint8_t hash[], const uint8_t data[]) {
-  int i;
-  SHA2_256_CTX ctx;
-
-  ctx.state[0]=0x6a09e667;
-  ctx.state[1]=0xbb67ae85;
-  ctx.state[2]=0x3c6ef372;
-  ctx.state[3]=0xa54ff53a;
-  ctx.state[4]=0x510e527f;
-  ctx.state[5]=0x9b05688c;
-  ctx.state[6]=0x1f83d9ab;
-  ctx.state[7]=0x5be0cd19;
-
   memcpy(input25, data, 25);
-  sha256_transform_func(ctx.state, input25, 1);
-
-  for (i = 0; i < 8; ++i) ((uint32_t *)rmd160_256)[i] = be32(ctx.state[i]);
-  ripemd160_rawcompress(rmd160_256, hash);
+  Hash160_Raw(hash, input25, 1);
 }
 
 static uint8_t input33[64] = {
@@ -90,23 +93,8 @@ static uint8_t input33[64] = {
   0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x01, 0x08
 };
 void Hash160_33(uint8_t hash[], const uint8_t data[]) {
-  int i;
-  SHA2_256_CTX ctx;
-
-  ctx.state[0]=0x6a09e667;
-  ctx.state[1]=0xbb67ae85;
-  ctx.state[2]=0x3c6ef372;
-  ctx.state[3]=0xa54ff53a;
-  ctx.state[4]=0x510e527f;
-  ctx.state[5]=0x9b05688c;
-  ctx.state[6]=0x1f83d9ab;
-  ctx.state[7]=0x5be0cd19;
-
   memcpy(input33, data, 33);
-  sha256_transform_func(ctx.state, input33, 1);
-
-  for (i = 0; i < 8; ++i) ((uint32_t *)rmd160_256)[i] = be32(ctx.state[i]);
-  ripemd160_rawcompress(rmd160_256, hash);
+  Hash160_Raw(hash, input33, 1);
 }
 
 static uint8_t input35[64] = {
@@ -122,23 +110,8 @@ static uint8_t input35[64] = {
   0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x01, 0x18
 };
 void Hash160_35(uint8_t hash[], const uint8_t data[]) {
-  int i;
-  SHA2_256_CTX ctx;
-
-  ctx.state[0]=0x6a09e667;
-  ctx.state[1]=0xbb67ae85;
-  ctx.state[2]=0x3c6ef372;
-  ctx.state[3]=0xa54ff53a;
-  ctx.state[4]=0x510e527f;
-  ctx.state[5]=0x9b05688c;
-  ctx.state[6]=0x1f83d9ab;
-  ctx.state[7]=0x5be0cd19;
-
   memcpy(input35, data, 35);
-  sha256_transform_func(ctx.state, input35, 1);
-
-  for (i = 0; i < 8; ++i) ((uint32_t *)rmd160_256)[i] = be32(ctx.state[i]);
-  ripemd160_rawcompress(rmd160_256, hash);
+  Hash160_Raw(hash, input35, 1);
 }
 
 static uint8_t input37[64] = {
@@ -154,23 +127,8 @@ static uint8_t input37[64] = {
   0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x01, 0x28
 };
 void Hash160_37(uint8_t hash[], const uint8_t data[]) {
-  int i;
-  SHA2_256_CTX ctx;
-
-  ctx.state[0]=0x6a09e667;
-  ctx.state[1]=0xbb67ae85;
-  ctx.state[2]=0x3c6ef372;
-  ctx.state[3]=0xa54ff53a;
-  ctx.state[4]=0x510e527f;
-  ctx.state[5]=0x9b05688c;
-  ctx.state[6]=0x1f83d9ab;
-  ctx.state[7]=0x5be0cd19;
-
   memcpy(input37, data, 37);
-  sha256_transform_func(ctx.state, input37, 1);
-
-  for (i = 0; i < 8; ++i) ((uint32_t *)rmd160_256)[i] = be32(ctx.state[i]);
-  ripemd160_rawcompress(rmd160_256, hash);
+  Hash160_Raw(hash, input37, 1);
 }
 
 static uint8_t input65[128] = {
@@ -196,23 +154,8 @@ static uint8_t input65[128] = {
   0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x02, 0x08
 };
 void Hash160_65(uint8_t hash[], const uint8_t data[]) {
-  int i;
-  SHA2_256_CTX ctx;
-
-  ctx.state[0] = 0x6a09e667;
-  ctx.state[1] = 0xbb67ae85;
-  ctx.state[2] = 0x3c6ef372;
-  ctx.state[3] = 0xa54ff53a;
-  ctx.state[4] = 0x510e527f;
-  ctx.state[5] = 0x9b05688c;
-  ctx.state[6] = 0x1f83d9ab;
-  ctx.state[7] = 0x5be0cd19;
-
   memcpy(input65, data, 65);
-  sha256_transform_func(ctx.state, input65, 2);
-
-  for (i = 0; i < 8; ++i) ((uint32_t *)rmd160_256)[i] = be32(ctx.state[i]);
-  ripemd160_rawcompress(rmd160_256, hash);
+  Hash160_Raw(hash, input65, 2);
 }
 
 static uint8_t input67[128] = {
@@ -238,23 +181,8 @@ static uint8_t input67[128] = {
   0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x02, 0x18
 };
 void Hash160_67(uint8_t hash[], const uint8_t data[]) {
-  int i;
-  SHA2_256_CTX ctx;
-
-  ctx.state[0] = 0x6a09e667;
-  ctx.state[1] = 0xbb67ae85;
-  ctx.state[2] = 0x3c6ef372;
-  ctx.state[3] = 0xa54ff53a;
-  ctx.state[4] = 0x510e527f;
-  ctx.state[5] = 0x9b05688c;
-  ctx.state[6] = 0x1f83d9ab;
-  ctx.state[7] = 0x5be0cd19;
-
   memcpy(input67, data, 67);
-  sha256_transform_func(ctx.state, input67, 2);
-
-  for (i = 0; i < 8; ++i) ((uint32_t *)rmd160_256)[i] = be32(ctx.state[i]);
-  ripemd160_rawcompress(rmd160_256, hash);
+  Hash160_Raw(hash, input67, 2);
 }
 
 static uint8_t input69[128] = {
@@ -280,23 +208,8 @@ static uint8_t input69[128] = {
   0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x02, 0x28
 };
 void Hash160_69(uint8_t hash[], const uint8_t data[]) {
-  int i;
-  SHA2_256_CTX ctx;
-
-  ctx.state[0] = 0x6a09e667;
-  ctx.state[1] = 0xbb67ae85;
-  ctx.state[2] = 0x3c6ef372;
-  ctx.state[3] = 0xa54ff53a;
-  ctx.state[4] = 0x510e527f;
-  ctx.state[5] = 0x9b05688c;
-  ctx.state[6] = 0x1f83d9ab;
-  ctx.state[7] = 0x5be0cd19;
-
   memcpy(input69, data, 69);
-  sha256_transform_func(ctx.state, input69, 2);
-
-  for (i = 0; i < 8; ++i) ((uint32_t *)rmd160_256)[i] = be32(ctx.state[i]);
-  ripemd160_rawcompress(rmd160_256, hash);
+  Hash160_Raw(hash, input69, 2);
 }
 
 void SHA2_256_Init(SHA2_256_CTX *ctx) {
