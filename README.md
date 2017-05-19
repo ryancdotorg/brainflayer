@@ -113,6 +113,18 @@ Address types can be specified with the `-c` option:
 
 * `-c c` compressed addresses
 
+* `-c H` p2sh addresses with p2pkh redeem script (uncompressed address)
+
+* `-c h` p2sh addresses with p2pkh redeem script (compressed address)
+
+* `-c P` p2sh addresses with p2pk redeem script (uncompressed public key)
+
+* `-c p` p2sh addresses with p2pk redeem script (compressed public key)
+
+* `-c M` p2sh addresses with 1-of-1 multisig redeem script (uncompressed address)
+
+* `-c m` p2sh addresses with 1-of-1 multisig redeem script (compressed address)
+
 * `-c e` ethereum addresses
 
 * `-c x` most signifigant bits of public point's x coordinate

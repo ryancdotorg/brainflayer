@@ -113,6 +113,87 @@ static void chash160(hash160_t *h, const unsigned char *upub) {
   cpub[0] = hdr; // restore public key header byte
 }
 
+#define OP_1             0x51
+#define OP_DUP           0x76
+#define OP_HASH160       0xa9
+#define OP_EQUALVERIFY   0x88
+#define OP_CHECKSIG      0xac
+#define OP_CHECKMULTISIG 0xae
+
+static void Hhash160(hash160_t *h, const unsigned char *upub) {
+  static unsigned char spk[] = {
+    OP_DUP, OP_HASH160, 20,
+    0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
+    OP_EQUALVERIFY, OP_CHECKSIG
+  };
+  Hash160_65(spk+3, upub);
+  Hash160_25(h->uc, spk);
+}
+
+static void hhash160(hash160_t *h, const unsigned char *upub) {
+  static unsigned char spk[] = {
+    OP_DUP, OP_HASH160, 20,
+    0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
+    OP_EQUALVERIFY, OP_CHECKSIG
+  };
+  unsigned char *cpub = (unsigned char *)upub;
+  unsigned char hdr;
+
+  hdr = upub[0]; // save public key header byte
+  cpub[0] = 0x02 | (upub[64] & 0x01); // quick and dirty public key compression
+  Hash160_33(spk+3, upub);
+  cpub[0] = hdr; // restore public key header byte
+  Hash160_25(h->uc, spk);
+}
+
+static void Phash160(hash160_t *h, const unsigned char *upub) {
+  static unsigned char spk[] = {
+    65,
+    0,
+    0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
+    OP_CHECKSIG
+  };
+  memcpy(spk+1, upub, 65);
+  Hash160_67(h->uc, spk);
+}
+
+static void phash160(hash160_t *h, const unsigned char *upub) {
+  static unsigned char spk[] = {
+    33,
+    0,
+    0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
+    OP_CHECKSIG
+  };
+  memcpy(spk+1, upub, 33);
+  spk[1] = 0x02 | (upub[64] & 0x01);
+  Hash160_35(h->uc, spk);
+}
+
+static void Mhash160(hash160_t *h, const unsigned char *upub) {
+  static unsigned char spk[] = {
+    OP_1, 65,
+    0,
+    0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
+    OP_1, OP_CHECKMULTISIG
+  };
+  memcpy(spk+2, upub, 65);
+  Hash160_69(h->uc, spk);
+}
+
+static void mhash160(hash160_t *h, const unsigned char *upub) {
+  static unsigned char spk[] = {
+    OP_1, 33,
+    0,
+    0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
+    OP_1, OP_CHECKMULTISIG
+  };
+  memcpy(spk+2, upub, 33);
+  spk[2] = 0x02 | (upub[64] & 0x01);
+  Hash160_37(h->uc, spk);
+}
+
 /* ethereum address */
 static void ehash160(hash160_t *h, const unsigned char *upub) {
   SHA3_256_CTX ctx;
@@ -358,6 +439,12 @@ void usage(unsigned char *name) {
                              and compressed addresses using Bitcoin's algorithm\n\
                              u - uncompressed address\n\
                              c - compressed address\n\
+                             H - p2sh(uncompressed p2pkh) address\n\
+                             h - p2sh(compressed p2pkh) address\n\
+                             P - p2sh(uncompressed p2pk) address\n\
+                             p - p2sh(compressed p2pk) address\n\
+                             M - p2sh(uncompressed 1-of-1 multisig) address\n\
+                             m - p2sh(compressed 1-of-1 multisig) address\n\
                              e - ethereum address\n\
                              x - most signifigant bits of x coordinate\n\
  -t TYPE                     inputs are TYPE - supported types:\n\
@@ -424,7 +511,7 @@ int main(int argc, char **argv) {
 
   unsigned char priv[64];
   hash160_t hash160;
-  pubhashfn_t pubhashfn[8];
+  pubhashfn_t pubhashfn[16];
   memset(pubhashfn, 0, sizeof(pubhashfn));
 
   int batch_stopped = -1;
@@ -585,6 +672,24 @@ int main(int argc, char **argv) {
         break;
       case 'c':
         pubhashfn[i].fn = &chash160;
+        break;
+      case 'H':
+        pubhashfn[i].fn = &Hhash160;
+        break;
+      case 'h':
+        pubhashfn[i].fn = &hhash160;
+        break;
+      case 'P':
+        pubhashfn[i].fn = &Phash160;
+        break;
+      case 'p':
+        pubhashfn[i].fn = &phash160;
+        break;
+      case 'M':
+        pubhashfn[i].fn = &Mhash160;
+        break;
+      case 'm':
+        pubhashfn[i].fn = &mhash160;
         break;
       case 'e':
         pubhashfn[i].fn = &ehash160;
