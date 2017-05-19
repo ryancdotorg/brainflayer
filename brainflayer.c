@@ -25,6 +25,7 @@
 #include "hash160.h"
 #include "hsearchf.h"
 
+#include "algo/quorum.h"
 #include "algo/brainv2.h"
 #include "algo/warpwallet.h"
 #include "algo/brainwalletio.h"
@@ -329,6 +330,10 @@ static int brainv2pass2priv(unsigned char *priv, unsigned char *pass, size_t pas
   return pass2priv(priv, hexout, sizeof(hexout)-1);
 }
 
+static int quorumpass2priv(unsigned char *priv, unsigned char *pass, size_t pass_sz) {
+  return quorum(pass, pass_sz, kdfsalt, kdfsalt_sz, priv);
+}
+
 static unsigned char *kdfpass;
 static size_t kdfpass_sz;
 
@@ -352,6 +357,10 @@ static int brainv2salt2priv(unsigned char *priv, unsigned char *salt, size_t sal
   if ((ret = brainv2(kdfpass, kdfpass_sz, salt, salt_sz, hexout)) != 0) return ret;
   salt[salt_sz] = 0;
   return pass2priv(priv, hexout, sizeof(hexout)-1);
+}
+
+static int quorumsalt2priv(unsigned char *priv, unsigned char *salt, size_t salt_sz) {
+  return quorum(kdfpass, kdfpass_sz, salt, salt_sz, priv);
 }
 
 static unsigned char rushchk[5];
@@ -455,6 +464,7 @@ void usage(unsigned char *name) {
                              warp   - WarpWallet (supports -s or -p)\n\
                              bwio   - brainwallet.io (supports -s or -p)\n\
                              bv2    - brainv2 (supports -s or -p) VERY SLOW\n\
+                             quorum - Quorum Wallet (supports -s or -p)\n\
                              rush   - rushwallet (requires -r) FAST\n\
                              keccak - keccak256 (ethercamp/old ethaddress)\n\
                              camp2  - keccak256 * 2031 (new ethercamp)\n\
@@ -731,6 +741,9 @@ int main(int argc, char **argv) {
     if (!Bopt) { Bopt = 1; } // don't batch transform for slow input hashes by default
     spok = 1;
     input2priv = popt ? &brainv2salt2priv : &brainv2pass2priv;
+  } else if (strcmp(topt, "quorum") == 0) {
+    spok = 1;
+    input2priv = popt ? &quorumsalt2priv : &quorumpass2priv;
   } else if (strcmp(topt, "rush") == 0) {
     input2priv = &rush2priv;
   } else if (strcmp(topt, "camp2") == 0) {
