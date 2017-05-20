@@ -24,6 +24,8 @@ all: $(BINARIES)
 sha256/sha256-%-asm.o: sha256/sha256-%-asm.S sha256/sha256-%-stub.S
 	$(COMPILE) -c $< -o $@ >/dev/null 2>/dev/null || $(COMPILE) -c $(subst asm,stub,$<) -o $@
 
+sha256/sha256.o: sha256/sha256.c sha256/ripemd160.c sha256/sha256_xform.c sha256/sha256_reg.c
+
 secp256k1/.libs/libsecp256k1.a: .git
 	git submodule init
 	git submodule update
