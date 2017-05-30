@@ -223,8 +223,6 @@ static void xhash160(hash160_t *h, const unsigned char *upub) {
   memcpy(h->uc, upub+1, 20);
 }
 
-
-
 static int pass2priv(unsigned char *priv, unsigned char *pass, size_t pass_sz) {
   SHA2_256_CTX ctx;
 
@@ -416,21 +414,6 @@ static int mini2priv(unsigned char *priv, unsigned char *pass, size_t pass_sz) {
 
   return pass2priv(priv, pass, pass_sz);
 }
-
-inline static int priv_incr(unsigned char *upub, unsigned char *priv) {
-  int sz;
-
-  secp256k1_ec_pubkey_incr(upub, &sz, priv);
-
-  return 0;
-}
-
-inline static void priv2pub(unsigned char *upub, const unsigned char *priv) {
-  int sz;
-
-  secp256k1_ec_pubkey_create_precomp(upub, &sz, priv);
-}
-
 
 inline static void fprintresult(FILE *f, hash160_t *hash,
                                 unsigned char compressed,
@@ -655,7 +638,9 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (wopt < 1 || wopt > 28) {
+  if (wopt && mopt) {
+    bail(1, "Window size cannot be manually specified when using an ecmult table\n");
+  } else if (wopt < 1 || wopt > 28) {
     bail(1, "Invalid window size '%d' - must be >= 1 and <= 28\n", wopt);
   } else {
     // very rough sanity check of window size
@@ -806,8 +791,6 @@ int main(int argc, char **argv) {
     input2priv = &keccak2priv;
   } else if (strcmp(topt, "sha3") == 0) {
     input2priv = &sha32priv;
-//  } else if (strcmp(topt, "dicap") == 0) {
-//    input2priv = &dicap2priv;
   } else {
     bail(1, "Unknown input type '%s'.\n", topt);
   }
