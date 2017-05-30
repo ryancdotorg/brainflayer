@@ -41,6 +41,8 @@ typedef struct pubhashfn_s {
    char id;
 } pubhashfn_t;
 
+static unsigned char keystream[BATCH_MAX+32];
+
 #ifndef SHOW_DUPLICATE_HITS
 static unsigned char *hits;
 static int hits_max = 65536;
@@ -484,6 +486,10 @@ void usage(unsigned char *name) {
  -r FRAGMENT                 use FRAGMENT for cracking rushwallet passphrase\n\
  -I HEXPRIVKEY               incremental private key cracking mode, starting\n\
                              at HEXPRIVKEY (supports -n) FAST\n\
+ -S DESCRIPTION              keystream cracking mode, input will be treated\n\
+                             as a stream of raw bytes, and each possible offset\n\
+                             will be tried as a private key. Output will be\n\
+                             labeled with DESCRIPTION,OFFSET\n\
  -k K                        skip the first K lines of input\n\
  -n K/N                      use only the Kth of every N input lines\n\
  -B                          batch size for affine transformations\n\
@@ -516,6 +522,7 @@ int main(int argc, char **argv) {
   uint64_t time_last, time_curr, time_delta;
   uint64_t time_start, time_elapsed;
   uint64_t ilines_last, ilines_curr, ilines_delta;
+  uint64_t Slines_last, Slines_curr;
   uint64_t olines;
 
   int skipping = 0, tty = 0;
@@ -528,7 +535,9 @@ int main(int argc, char **argv) {
   unsigned char *bopt = NULL, *iopt = NULL, *oopt = NULL;
   unsigned char *topt = NULL, *sopt = NULL, *popt = NULL;
   unsigned char *mopt = NULL, *fopt = NULL, *ropt = NULL;
-  unsigned char *Iopt = NULL, *copt = NULL;
+  unsigned char *Iopt = NULL, *copt = NULL, *Sopt = NULL;
+
+  unsigned char Sdesc[257];
 
   unsigned char priv[64];
   hash160_t hash160;
@@ -542,7 +551,7 @@ int main(int argc, char **argv) {
   unsigned char batch_priv[BATCH_MAX][32];
   unsigned char batch_upub[BATCH_MAX][65];
 
-  while ((c = getopt(argc, argv, "avxb:hi:k:f:m:n:o:p:s:r:c:t:w:I:B:")) != -1) {
+  while ((c = getopt(argc, argv, "avxb:hi:k:f:m:n:o:p:s:r:c:t:w:I:S:B:")) != -1) {
     switch (c) {
       case 'a':
         aopt = 1; // open output file in append mode
@@ -603,7 +612,9 @@ int main(int argc, char **argv) {
         break;
       case 'I':
         Iopt = optarg; // start key for incremental
-        xopt = 1; // input is hex encoded
+        break;
+      case 'S':
+        Sopt = optarg; // description for keystream
         break;
       case 'h':
         // show help
@@ -668,8 +679,14 @@ int main(int argc, char **argv) {
     if (strlen(Iopt) != 64) {
       bail(1, "The starting key passed to the '-I' must be 64 hex digits exactly\n");
     }
+    if (xopt) {
+      bail(1, "Hex input not meaningful in incremental mode\n");
+    }
     if (topt) {
       bail(1, "Cannot specify input type in incremental mode\n");
+    }
+    if (Iopt) {
+      bail(1, "Stream mode and incremental mode cannot be used together\n");
     }
     topt = "priv";
     // normally, getline would allocate the batch_line entries, but we need to
@@ -682,6 +699,29 @@ int main(int argc, char **argv) {
     if (!nopt_mod) { nopt_mod = 1; };
   }
 
+  if (Sopt) {
+    if (xopt) {
+      bail(1, "Hex input not supported in keystream mode\n");
+    }
+    if (topt) {
+      bail(1, "Cannot specify input type in keystream mode\n");
+    }
+    if (strnlen(Sopt, 257) > 256) {
+      bail(1, "Maximum keystream description length is 256 bytes\n");
+    }
+
+    strncpy(Sdesc, Sopt, 256);
+    Sdesc[256] = 0;
+
+    topt = "priv";
+
+    if ((batch_line[0] = malloc(64+1+256+1+20)) == NULL) {
+      bail(1, "Failed to allocate output strings\n");
+    }
+    for (i = 1; i < BATCH_MAX; ++i) {
+      batch_line[i] = batch_line[0];
+    }
+  }
 
   /* handle copt */
   if (copt == NULL) { copt = "uc"; }
@@ -736,7 +776,7 @@ int main(int argc, char **argv) {
   } else if (strcmp(topt, "mini") == 0) {
     input2priv = &mini2priv;
   } else if (strcmp(topt, "priv") == 0) {
-    if (!xopt) {
+    if (!xopt && !Sopt && !Iopt) {
       bail(1, "raw private key input requires -x");
     }
     input2priv = &rawpriv2priv;
@@ -873,6 +913,15 @@ int main(int argc, char **argv) {
   // set default batch size
   if (!Bopt) { Bopt = BATCH_MAX; }
 
+  // needs to be done fairly late...
+  if (Sopt) {
+    ks_tables_init();
+    if (fread(keystream + Bopt, 1, 31, ifile) != 31) {
+      bail(1, "could not read enough bytes from to initialize keystream\n");
+    }
+    Slines_last = Slines_curr = 0;
+  }
+
   for (;;) {
     if (Iopt) {
       if (skipping) {
@@ -884,6 +933,18 @@ int main(int argc, char **argv) {
       priv_add_uint32(priv, nopt_mod);
 
       batch_stopped = Bopt;
+    } else if (Sopt) {
+      Slines_last = Slines_curr;
+      // copy remaing bytes from last round to front of stream
+      memcpy(keystream, keystream + Bopt, 31);
+      batch_stopped = fread(keystream+31, 1, Bopt, ifile);
+      if (batch_stopped <= 0) {
+        batch_stopped = 0;
+        break;
+      } else {
+        secp256k1_ec_pubkey_batch_stream(batch_stopped, batch_upub, batch_priv, keystream);
+        Slines_curr += batch_stopped;
+      }
     } else {
       for (i = 0; i < Bopt; ++i) {
         if ((batch_line_read[i] = getline(&batch_line[i], &batch_line_sz[i], ifile)-1) > -1) {
@@ -949,6 +1010,9 @@ int main(int argc, char **argv) {
                 // reformat/populate the line if required
                 if (Iopt) {
                   hex(batch_priv[i], 32, batch_line[i], 65);
+                } else if (Sopt) {
+                  hex(batch_priv[i], 32, batch_line[i], 65);
+                  sprintf(batch_line[i]+64, ":%s,%zu", Sdesc, Slines_last + i);
                 }
                 fprintresult(ofile, &hash160, pubhashfn[j].id, modestr, batch_line[i]);
 #ifndef SHOW_DUPLICATE_HITS
@@ -964,6 +1028,9 @@ int main(int argc, char **argv) {
         // reformat/populate the line if required
         if (Iopt) {
           hex(batch_priv[i], 32, batch_line[i], 65);
+        } else if (Sopt) {
+          hex(batch_priv[i], 32, batch_line[i], 65);
+          sprintf(batch_line[i]+64, ":%s,%zu", Sdesc, Slines_last + i);
         }
         while (pubhashfn[j].fn != NULL) {
           pubhashfn[j].fn(&hash160, batch_upub[i]);

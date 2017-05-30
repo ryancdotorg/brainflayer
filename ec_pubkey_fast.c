@@ -29,6 +29,14 @@ static int secp256k1_eckey_pubkey_parse(secp256k1_ge_t *elem, const unsigned cha
 #include "mmapf.h"
 
 #undef ASSERT
+/* byte conversion */
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+# define be32(x) __builtin_bswap32(x)
+# define be64(x) __builtin_bswap64(x)
+#else
+# define be32(x) (x)
+# define be64(x) (x)
+#endif
 
 #define READBIT(A, B) ((A >> (B & 7)) & 1)
 #define SETBIT(T, B, V) (T = V ? T | (1<<B) : T & ~(1<<B))
@@ -531,6 +539,136 @@ int secp256k1_ec_pubkey_add_gej(unsigned char *pub_chr, int *pub_chr_sz, void *a
   secp256k1_fe_normalize_var(&p.y);
   secp256k1_fe_get_b32(pub_chr +  1, &p.x);
   secp256k1_fe_get_b32(pub_chr + 33, &p.y);
+
+  return 0;
+}
+
+static int ks_tables_built = 0;
+static secp256k1_ge_t ks_ge_add[256], ks_ge_sub[256];
+static secp256k1_gej_t zeroj;
+void ks_tables_init() {
+  int i;
+  unsigned char key[32];
+  secp256k1_gej_t tmp_gej;
+  secp256k1_scalar_t tmp_scalar;
+
+  // don't re-run if tables already built
+  if (ks_tables_built) return;
+
+  // infinity is the additive identity
+  secp256k1_ge_set_infinity(&ks_ge_add[0]);
+  secp256k1_ge_set_infinity(&ks_ge_sub[0]);
+
+  for (i = 1; i < 256; ++i) {
+    // generate table entry for adding to least signifigant byte
+    memset(key, 0, 32);
+    key[31] = i;
+    secp256k1_ecmult_gen_b32(&tmp_gej, key);
+    secp256k1_ge_set_gej_var(&ks_ge_add[i], &tmp_gej);
+
+    // generate table entry for subtracting from most signifigant byte
+    memset(key, 0, 32);
+    key[0] = i;
+    secp256k1_scalar_set_b32(&tmp_scalar, key, NULL);
+    secp256k1_scalar_negate(&tmp_scalar, &tmp_scalar);
+    secp256k1_scalar_get_b32(key, &tmp_scalar);
+    secp256k1_ecmult_gen_b32(&tmp_gej, key);
+    secp256k1_ge_set_gej_var(&ks_ge_sub[i], &tmp_gej);
+  }
+
+  // not actually valid, but avoids crashing like setting infinity would
+  memset(key, 0, 32);
+  secp256k1_ecmult_gen_b32(&zeroj, key);
+
+  ks_tables_built = 1;
+}
+
+static inline void secp256k1_gej_mul256_var(secp256k1_gej_t *a, secp256k1_gej_t *b, secp256k1_fe_t *rzr) {
+  secp256k1_gej_double_var(a, b, rzr); secp256k1_gej_double_var(a, b, rzr);
+  secp256k1_gej_double_var(a, b, rzr); secp256k1_gej_double_var(a, b, rzr);
+  secp256k1_gej_double_var(a, b, rzr); secp256k1_gej_double_var(a, b, rzr);
+  secp256k1_gej_double_var(a, b, rzr); secp256k1_gej_double_var(a, b, rzr);
+}
+
+#define KEY_OKAY  0
+#define KEY_OVER -1
+#define KEY_ZERO -2
+// seems to be okay on sandy bridge+ to have misaligned memory
+// http://www.agner.org/optimize/blog/read.php?i=142&v=t
+static inline int secp256k1_valid_b32(const unsigned char priv[32]) {
+  const uint64_t *p64 = (uint64_t *)priv;
+  // ffffffff ffffffff ffffffff fffffffe baaedce6 af48a03b bfd25e8c d0364141
+  if (     p64[0]  == 0xffffffffffffffffULL &&
+      be64(p64[1]) >= 0xfffffffffffffffeULL &&
+      be64(p64[2]) >= 0xbaaedce6af48a03bULL &&
+      be64(p64[3]) >= 0xbfd25e8cd0364141ULL) {
+    // key too big, set public from key bytes
+    return KEY_OVER;
+  } else if (p64[0] == 0 && p64[1] == 0 && p64[2] == 0 && p64[3] == 0) {
+    // key is zero, set public key to infinity
+    return KEY_ZERO;
+  } else {
+    return KEY_OKAY;
+  }
+}
+
+// call secp256k1_ec_pubkey_batch_init and ks_tables_init first or you get segfaults
+int secp256k1_ec_pubkey_batch_stream(unsigned int num, unsigned char (*pub)[65], unsigned char (*sec)[32], unsigned char *stream) {
+  int i, overflow;
+  int oldbyte_off = 0, newbyte_off = 32;
+  unsigned char *key = stream;
+
+  // handle the first key
+  memcpy(sec[0], key, 32);
+  if ((overflow = secp256k1_valid_b32(key)) == KEY_ZERO) {
+    memcpy(&batchpj[0], &zeroj, sizeof(zeroj));
+  } else {
+    secp256k1_ecmult_gen_b32(&batchpj[0], key);
+  }
+
+  ++key;
+
+  for (i = 1; i < num; ++i, ++oldbyte_off, ++newbyte_off, ++key) {
+    // copy from keystream into private key output
+    memcpy(sec[i], key, 32);
+    // if the previous key was an overflow, compute the public point from scratch
+    if (overflow != KEY_OKAY) {
+      // check for overflow at new position
+      if ((overflow = secp256k1_valid_b32(key)) == KEY_ZERO) {
+        memcpy(&batchpj[i], &zeroj, sizeof(zeroj));
+      } else {
+        secp256k1_ecmult_gen_b32(&batchpj[i], key);
+      }
+    } else {
+      if ((overflow = secp256k1_valid_b32(key)) == KEY_ZERO) {
+        memcpy(&batchpj[i], &zeroj, sizeof(zeroj));
+      } else if (overflow == KEY_OVER) {
+        secp256k1_ecmult_gen_b32(&batchpj[i], key);
+      } else {
+        // subtract the byte being shifted off
+        secp256k1_gej_add_ge_var(&batchpj[i], &batchpj[i-1], &ks_ge_sub[stream[oldbyte_off]], NULL);
+        // multiply the public point by 256
+        secp256k1_gej_mul256_var(&batchpj[i], &batchpj[i], NULL);
+        // add in the new byte
+        secp256k1_gej_add_ge_var(&batchpj[i], &batchpj[i],   &ks_ge_add[stream[newbyte_off]], NULL);
+      }
+    }
+  }
+
+  // convert all jacobian coordinates to affine
+  secp256k1_ge_set_all_gej_static(num, batchpa, batchpj);
+  // serialize public keys
+  //secp256k1_b65_set_all_gej_static(num, pub, batchpa, batchpj);
+
+  // serialize public keys to output
+  for (i = 0; i < num; ++i) {
+    secp256k1_fe_normalize_var(&batchpa[i].x);
+    secp256k1_fe_normalize_var(&batchpa[i].y);
+
+    pub[i][0] = 0x04;
+    secp256k1_fe_get_b32(pub[i] +  1, &batchpa[i].x);
+    secp256k1_fe_get_b32(pub[i] + 33, &batchpa[i].y);
+  }
 
   return 0;
 }

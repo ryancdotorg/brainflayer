@@ -19,4 +19,7 @@ int secp256k1_ec_pubkey_add_gej(unsigned char *, int *, void *);
 int secp256k1_ec_pubkey_batch_init(unsigned int);
 int secp256k1_ec_pubkey_batch_create(unsigned int, unsigned char (*)[65], unsigned char (*)[32]);
 int secp256k1_ec_pubkey_batch_incr(unsigned int, unsigned int, unsigned char (*)[65], unsigned char (*)[32], unsigned char[32]);
+
+void ks_tables_init();
+int secp256k1_ec_pubkey_batch_stream(unsigned int, unsigned char (*)[65], unsigned char (*)[32], unsigned char *);
 #endif//__EC_PUBKEY_FAST_H_
