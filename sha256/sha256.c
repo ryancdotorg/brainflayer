@@ -297,14 +297,13 @@ uint64_t SHA2_256_Pad(uint8_t data[], size_t len) {
 
   if (remaining_bytes < 56) {
     memset(data + len + 1, 0,  56 - (remaining_bytes + 1));
-    bitlen_ptr = (uint64_t *)(data + (len & (UINT64_MAX ^ 64)) +  56);
     nblk += 1;
   } else {
     memset(data + len + 1, 0, 120 - (remaining_bytes + 1));
-    bitlen_ptr = (uint64_t *)(data + (len & (UINT64_MAX ^ 64)) + 120);
     nblk += 2;
   }
 
+  bitlen_ptr = (uint64_t *)(data + (nblk << 6) - 8);
   *bitlen_ptr = be64(len * 8);
 
   return nblk;
