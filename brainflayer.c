@@ -41,6 +41,11 @@ typedef struct pubhashfn_s {
    char id;
 } pubhashfn_t;
 
+#ifndef SHOW_DUPLICATE_HITS
+static unsigned char *hits;
+static int hits_max = 65536;
+#endif//SHOW_DUPLICATE_HITS
+
 static unsigned char *mem;
 
 static mmapf_ctx bloom_mmapf;
@@ -88,6 +93,9 @@ static inline void brainflayer_init_globals() {
     SHA2_256_Register();
     /* initialize buffers */
     mem = chkmalloc(4096);
+#ifndef SHOW_DUPLICATE_HITS
+    hits = chkmalloc(40 * hits_max);
+#endif//SHOW_DUPLICATE_HITS
     unhexed = chkmalloc(unhexed_sz);
 
     /* set the flag */
@@ -497,6 +505,9 @@ int main(int argc, char **argv) {
   FILE *ffile = NULL;
 
   int ret, c, i, j;
+#ifndef SHOW_DUPLICATE_HITS
+  int k;
+#endif//SHOW_DUPLICATE_HITS
 
   float alpha, ilines_rate, ilines_rate_avg;
   int64_t raw_lines = -1;
@@ -922,13 +933,29 @@ int main(int argc, char **argv) {
           pubhashfn[j].fn(&hash160, batch_upub[i]);
           if (bloom_chk_hash160(bloom, hash160.ul)) {
             if (!fopt || hsearchf(ffile, &hash160)) {
-              if (tty) { fprintf(ofile, "\033[0K"); }
-              // reformat/populate the line if required
-              if (Iopt) {
-                hex(batch_priv[i], 32, batch_line[i], 65);
+#ifndef SHOW_DUPLICATE_HITS
+              // look for duplicates
+              for (k = 0; k < olines; ++k) {
+                if (memcmp(hits + (k*40), &hash160, 40) == 0) {
+                  k = -1;
+                  break;
+                }
               }
-              fprintresult(ofile, &hash160, pubhashfn[j].id, modestr, batch_line[i]);
-              ++olines;
+              if (k >= 0) {
+#else
+              if (1) {
+#endif//SHOW_DUPLICATE_HITS
+                if (tty) { fprintf(ofile, "\033[0K"); }
+                // reformat/populate the line if required
+                if (Iopt) {
+                  hex(batch_priv[i], 32, batch_line[i], 65);
+                }
+                fprintresult(ofile, &hash160, pubhashfn[j].id, modestr, batch_line[i]);
+#ifndef SHOW_DUPLICATE_HITS
+                if (k < hits_max) { memcpy(hits + (k*40), &hash160, 40); }
+#endif//SHOW_DUPLICATE_HITS
+                ++olines;
+              }
             }
           }
           ++j;
