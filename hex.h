@@ -16,7 +16,7 @@ static const unsigned char unhex_tab[80] = {
 static inline unsigned char *
 unhex(unsigned char *str, size_t str_sz,
         unsigned char *unhexed, size_t unhexed_sz) {
-  int i, j;
+  unsigned int i, j;
   for (i = j = 0; i < str_sz && j < unhexed_sz; i += 2, ++j) {
     unhexed[j] = (unhex_tab[str[i+0]&0x4f] & 0xf0)|
                  (unhex_tab[str[i+1]&0x4f] & 0x0f);

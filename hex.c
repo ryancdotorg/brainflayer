@@ -8,7 +8,7 @@
 unsigned char *
 hex(unsigned char *buf, size_t buf_sz,
     unsigned char *hexed, size_t hexed_sz) {
-  int i, j;
+  unsigned int i, j;
   --hexed_sz;
   for (i = j = 0; i < buf_sz && j < hexed_sz; ++i, j += 2) {
     snprintf(hexed+j, 3, "%02x", buf[i]);

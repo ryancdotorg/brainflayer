@@ -97,7 +97,7 @@ int mmapf(mmapf_ctx *ctx, const unsigned char *filename, size_t size, int flags)
   } else {
     if (stat(filename, &sb) == 0) { // file exists
       if (!S_ISREG(sb.st_mode)) { return MMAPF_ENREG; } // not a regular file
-      if (sb.st_size != size) { return MMAPF_ESIZE; } // wrong size
+      if (sb.st_size != (off_t)size) { return MMAPF_ESIZE; } // wrong size
       if ((fd = open64(filename, fmode)) < 0) { return errno; } // open failed
     } else if (flags & MMAPF_CR) { // file missing, but creation requested
       if ((fd = open64(filename, fmode)) < 0) { return errno; } // open failed
