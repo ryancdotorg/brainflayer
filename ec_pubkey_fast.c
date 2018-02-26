@@ -543,6 +543,12 @@ int secp256k1_ec_pubkey_add_gej(unsigned char *pub_chr, int *pub_chr_sz, void *a
   return 0;
 }
 
+/**************************/
+/*                        */
+/*  BEGIN KEYSTREAM CODE  */
+/*                        */
+/**************************/
+
 static int ks_tables_built = 0;
 static secp256k1_ge_t ks_ge_add[256], ks_ge_sub[256];
 static secp256k1_gej_t zeroj;
@@ -672,5 +678,11 @@ int secp256k1_ec_pubkey_batch_stream(unsigned int num, unsigned char (*pub)[65],
 
   return 0;
 }
+
+/**************************/
+/*                        */
+/*   END KEYSTREAM CODE   */
+/*                        */
+/**************************/
 
 /*  vim: set ts=2 sw=2 et ai si: */
