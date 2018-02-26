@@ -45,6 +45,11 @@ static uint8_t rmd160_256[64] = {
   0x00, 0x01, 0x00, 0x00,   0x00, 0x00, 0x00, 0x00
 };
 
+void Hash160(uint8_t hash[], const uint8_t data[], size_t len) {
+  SHA2_256(rmd160_256, data, len);
+  ripemd160_rawcompress(rmd160_256, hash);
+}
+
 // caller is responsible for padding
 inline void Hash160_Raw(uint8_t hash[], const uint8_t data[], uint64_t nblk) {
   uint32_t *rmd160_in = (uint32_t *)rmd160_256;
@@ -210,6 +215,45 @@ static uint8_t input69[128] = {
 void Hash160_69(uint8_t hash[], const uint8_t data[]) {
   memcpy(input69, data, 69);
   Hash160_Raw(hash, input69, 2);
+}
+
+inline void SHA2_256(uint8_t hash[], const uint8_t data[], size_t len) {
+  static uint8_t padding[128];
+  uint64_t dblk = len >> 6; // divide by 64, rounding down
+  int remaining_bytes = len & 63;
+
+  // initialize state
+  uint32_t state[8] = {
+    0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+    0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
+  };
+
+  // copy partial block bytes into the padding
+  memcpy(padding, data + (dblk << 6), remaining_bytes);
+  // set a 1 bit after the data
+  padding[remaining_bytes] = 0x80;
+
+  sha256_transform_func(state, data, dblk);
+  // set length
+  if (remaining_bytes < 56) {
+    memset(padding + remaining_bytes + 1, 0,  56 - (remaining_bytes + 1));
+    ((uint64_t *)padding)[ 7] = be64(len * 8);
+    sha256_transform_func(state, padding, 1);
+  } else {
+    memset(padding + remaining_bytes + 1, 0, 120 - (remaining_bytes + 1));
+    ((uint64_t *)padding)[15] = be64(len * 8);
+    sha256_transform_func(state, padding, 2);
+  }
+
+  // write out result
+  ((uint32_t *)hash)[0] = be32(state[0]);
+  ((uint32_t *)hash)[1] = be32(state[1]);
+  ((uint32_t *)hash)[2] = be32(state[2]);
+  ((uint32_t *)hash)[3] = be32(state[3]);
+  ((uint32_t *)hash)[4] = be32(state[4]);
+  ((uint32_t *)hash)[5] = be32(state[5]);
+  ((uint32_t *)hash)[6] = be32(state[6]);
+  ((uint32_t *)hash)[7] = be32(state[7]);
 }
 
 void SHA2_256_Init(SHA2_256_CTX *ctx) {

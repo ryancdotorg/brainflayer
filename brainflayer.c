@@ -224,11 +224,7 @@ static void xhash160(hash160_t *h, const unsigned char *upub) {
 }
 
 static int pass2priv(unsigned char *priv, unsigned char *pass, size_t pass_sz) {
-  SHA2_256_CTX ctx;
-
-  SHA2_256_Init(&ctx);
-  SHA2_256_Update(&ctx, pass, pass_sz);
-  SHA2_256_Final(priv, &ctx);
+  SHA2_256(priv, pass, pass_sz);
 
   return 0;
 }
