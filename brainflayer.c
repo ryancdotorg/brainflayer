@@ -31,6 +31,15 @@
 #include "algo/brainwalletio.h"
 #include "algo/sha3.h"
 
+/*  byte conversion */
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+# define be32(x) __builtin_bswap32(x)
+# define be64(x) __builtin_bswap64(x)
+#else
+# define be32(x) (x)
+# define be64(x) (x)
+#endif
+
 // raise this if you really want, but quickly diminishing returns
 #define BATCH_MAX 4096
 
