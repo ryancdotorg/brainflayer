@@ -478,7 +478,7 @@ void usage(unsigned char *name) {
                              rush   - rushwallet (requires -r) FAST\n\
                              keccak - keccak256 (ethercamp/old ethaddress)\n\
                              camp2  - keccak256 * 2031 (new ethercamp)\n\
-                             parity - Parity Wallet 'recovery phrase'\n\
+                             parity - Parity Wallet 'recovery phrase' SLOW\n\
  -x                          treat input as hex encoded\n\
  -s SALT                     use SALT for salted input types (default: none)\n\
  -p PASSPHRASE               use PASSPHRASE for salted input types, inputs\n\
@@ -655,9 +655,11 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (wopt && mopt) {
-    bail(1, "Window size cannot be manually specified when using an ecmult table\n");
-  } else if (wopt < 1 || wopt > 28) {
+  //if (wopt && mopt) {
+  //  bail(1, "Window size cannot be manually specified when using an ecmult table\n");
+  //} else
+  /* values of 17, 21, 23, 25, 27, 28, 30, 31 just waste memory */
+  if (wopt < 1 || wopt > 28) {
     bail(1, "Invalid window size '%d' - must be >= 1 and <= 28\n", wopt);
   } else {
     // very rough sanity check of window size
@@ -672,8 +674,8 @@ int main(int argc, char **argv) {
   if (Bopt) { // if unset, will be set later
     if (Bopt < 1 || Bopt > BATCH_MAX) {
       bail(1, "Invalid '-B' argument, batch size '%d' - must be >= 1 and <= %d\n", Bopt, BATCH_MAX);
-    } else if (Bopt & (Bopt - 1)) { // https://graphics.stanford.edu/~seander/bithacks.html#DetermineIfPowerOf2
-      bail(1, "Invalid '-B' argument, batch size '%d' is not a power of 2\n", Bopt);
+    //} else if (Bopt & (Bopt - 1)) { // https://graphics.stanford.edu/~seander/bithacks.html#DetermineIfPowerOf2
+    //  bail(1, "Invalid '-B' argument, batch size '%d' is not a power of 2\n", Bopt);
     }
   }
 
@@ -686,9 +688,6 @@ int main(int argc, char **argv) {
     }
     if (topt) {
       bail(1, "Cannot specify input type in incremental mode\n");
-    }
-    if (Iopt) {
-      bail(1, "Stream mode and incremental mode cannot be used together\n");
     }
     topt = "priv";
     // normally, getline would allocate the batch_line entries, but we need to
@@ -707,6 +706,9 @@ int main(int argc, char **argv) {
     }
     if (topt) {
       bail(1, "Cannot specify input type in keystream mode\n");
+    }
+    if (Iopt) {
+      bail(1, "Stream mode and incremental mode cannot be used together\n");
     }
     if (strnlen(Sopt, 257) > 256) {
       bail(1, "Maximum keystream description length is 256 bytes\n");
@@ -783,7 +785,7 @@ int main(int argc, char **argv) {
     input2priv = &mini2priv;
   } else if (strcmp(topt, "priv") == 0) {
     if (!xopt && !Sopt && !Iopt) {
-      bail(1, "raw private key input requires -x");
+      bail(1, "raw private key input requires -x\n");
     }
     input2priv = &rawpriv2priv;
   } else if (strcmp(topt, "p2sh") == 0) {
