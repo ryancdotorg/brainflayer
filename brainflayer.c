@@ -232,6 +232,11 @@ static void xhash160(hash160_t *h, const unsigned char *upub) {
   memcpy(h->uc, upub+1, 20);
 }
 
+/* msb of entire public key */
+static void shash160(hash160_t *h, const unsigned char *upub) {
+  memcpy(h->uc, upub, 20);
+}
+
 static int pass2priv(unsigned char *priv, unsigned char *pass, size_t pass_sz) {
   SHA2_256(priv, pass, pass_sz);
 
@@ -420,6 +425,12 @@ static int mini2priv(unsigned char *priv, unsigned char *pass, size_t pass_sz) {
   return pass2priv(priv, pass, pass_sz);
 }
 
+// tricksy
+static int script2priv(unsigned char *pub, unsigned char *script, size_t script_sz) {
+  Hash160(pub, script, script_sz);
+  return 0;
+}
+
 inline static void fprintresult(FILE *f, hash160_t *hash,
                                 unsigned char compressed,
                                 unsigned char *type,
@@ -459,6 +470,7 @@ void usage(unsigned char *name) {
                              mini   - Casascius mini private key format\n\
                              sha3   - sha3-256\n\
                              priv   - raw private keys (requires -x)\n\
+                             p2sh   - raw scripts for p2sh (requires -x)\n\
                              warp   - WarpWallet (supports -s or -p)\n\
                              bwio   - brainwallet.io (supports -s or -p)\n\
                              bv2    - brainv2 (supports -s or -p) VERY SLOW\n\
@@ -714,48 +726,52 @@ int main(int argc, char **argv) {
   }
 
   /* handle copt */
-  if (copt == NULL) { copt = "uc"; }
-  i = 0;
-  while (copt[i]) {
-    switch (copt[i]) {
-      case 'u':
-        pubhashfn[i].fn = &uhash160;
-        break;
-      case 'c':
-        pubhashfn[i].fn = &chash160;
-        break;
-      case 'H':
-        pubhashfn[i].fn = &Hhash160;
-        break;
-      case 'h':
-        pubhashfn[i].fn = &hhash160;
-        break;
-      case 'P':
-        pubhashfn[i].fn = &Phash160;
-        break;
-      case 'p':
-        pubhashfn[i].fn = &phash160;
-        break;
-      case 'M':
-        pubhashfn[i].fn = &Mhash160;
-        break;
-      case 'm':
-        pubhashfn[i].fn = &mhash160;
-        break;
-      case 'e':
-        pubhashfn[i].fn = &ehash160;
-        break;
-      case 'x':
-        pubhashfn[i].fn = &xhash160;
-        break;
-      default:
-        bail(1, "Unknown hash160 type '%c'.\n", copt[i]);
+  if (copt == NULL) {
+    pubhashfn[0].fn = &uhash160; pubhashfn[0].id = 'u';
+    pubhashfn[1].fn = &chash160; pubhashfn[1].id = 'c';
+  } else {
+    i = 0;
+    while (copt[i]) {
+      switch (copt[i]) {
+        case 'u':
+          pubhashfn[i].fn = &uhash160;
+          break;
+        case 'c':
+          pubhashfn[i].fn = &chash160;
+          break;
+        case 'H':
+          pubhashfn[i].fn = &Hhash160;
+          break;
+        case 'h':
+          pubhashfn[i].fn = &hhash160;
+          break;
+        case 'P':
+          pubhashfn[i].fn = &Phash160;
+          break;
+        case 'p':
+          pubhashfn[i].fn = &phash160;
+          break;
+        case 'M':
+          pubhashfn[i].fn = &Mhash160;
+          break;
+        case 'm':
+          pubhashfn[i].fn = &mhash160;
+          break;
+        case 'e':
+          pubhashfn[i].fn = &ehash160;
+          break;
+        case 'x':
+          pubhashfn[i].fn = &xhash160;
+          break;
+        default:
+          bail(1, "Unknown hash160 type '%c'.\n", copt[i]);
+      }
+      if (strchr(copt + i + 1, copt[i])) {
+        bail(1, "Duplicate hash160 type '%c'.\n", copt[i]);
+      }
+      pubhashfn[i].id = copt[i];
+      ++i;
     }
-    if (strchr(copt + i + 1, copt[i])) {
-      bail(1, "Duplicate hash160 type '%c'.\n", copt[i]);
-    }
-    pubhashfn[i].id = copt[i];
-    ++i;
   }
 
   /* handle topt */
@@ -770,6 +786,16 @@ int main(int argc, char **argv) {
       bail(1, "raw private key input requires -x");
     }
     input2priv = &rawpriv2priv;
+  } else if (strcmp(topt, "p2sh") == 0) {
+    if (!xopt) {
+      bail(1, "raw script input requires -x\n");
+    }
+    if (copt) {
+      bail(1, "hash160 type cannot be set for raw script input\n");
+    }
+    pubhashfn[0].fn = &shash160; pubhashfn[0].id = 's';
+    pubhashfn[1].fn = NULL;      pubhashfn[1].id = 0x0;
+    input2priv = &script2priv;
   } else if (strcmp(topt, "warp") == 0) {
     if (!Bopt) { Bopt = 1; } // don't batch transform for slow input hashes by default
     spok = 1;
@@ -952,10 +978,18 @@ int main(int argc, char **argv) {
           }
           // rewrite the input line from hex
           unhex(batch_line[i], batch_line_read[i], unhexed, unhexed_sz);
-          if (input2priv(batch_priv[i], unhexed, batch_line_read[i]/2) != 0) {
-            //fprintf(stderr, "input2priv failed! continuing...\n");
-            // skip this key
-            ++ilines_curr; --i;
+          if (input2priv == &script2priv) {
+            if (script2priv(batch_upub[i], unhexed, batch_line_read[i]/2) != 0) {
+              //fprintf(stderr, "script2priv failed! continuing...\n");
+              // skip this key
+              ++ilines_curr; --i;
+            }
+          } else {
+            if (input2priv(batch_priv[i], unhexed, batch_line_read[i]/2) != 0) {
+              //fprintf(stderr, "input2priv failed! continuing...\n");
+              // skip this key
+              ++ilines_curr; --i;
+            }
           }
         } else {
           if (input2priv(batch_priv[i], batch_line[i], batch_line_read[i]) != 0) {
@@ -966,8 +1000,10 @@ int main(int argc, char **argv) {
         }
       }
 
-      // batch compute the public keys
-      secp256k1_ec_pubkey_batch_create(Bopt, batch_upub, batch_priv);
+      if (input2priv != &script2priv) {
+        // batch compute the public keys
+        secp256k1_ec_pubkey_batch_create(Bopt, batch_upub, batch_priv);
+      }
 
       // save ending value from read loop
       batch_stopped = i;
