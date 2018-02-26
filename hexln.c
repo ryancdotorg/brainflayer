@@ -15,6 +15,9 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+  // don't flush on newlines)
+  //setvbuf(stdout, NULL, _IOFBF, 65536);
+
   while ((line_read = getline(&line, &line_sz, stdin)) > 0) {
     while (line_sz * 2 > buf_sz) {
       buf_sz *= 2;
