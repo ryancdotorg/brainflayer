@@ -35,6 +35,10 @@ hex2blf
 blfchk
 ecmtabgen
 filehex
+swab256
+oneoff
+p2shln
+hexpdln
 
 # Debug files
 *.dSYM/
@@ -42,3 +46,7 @@ filehex
 # misc
 old
 notes
+output
+blockchain
+scripts
+misc
