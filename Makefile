@@ -60,6 +60,12 @@ ec_pubkey_fast.o: ec_pubkey_fast.c secp256k1/include/secp256k1.h
 hexln: hexln.o hex.o
 	$(COMPILE) -static $^ $(LIBS) -o $@
 
+hexpdln: hexpdln.o hex.o
+	$(COMPILE) -static $^ $(LIBS) -o $@
+
+p2shln: p2shln.o hex.o $(OBJ_SHA256)
+	$(COMPILE) -static $^ $(LIBS) -o $@
+
 sha256ln: sha256ln.o hex.o $(OBJ_SHA256)
 	$(COMPILE) -static $^ $(LIBS) -o $@
 
