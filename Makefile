@@ -78,6 +78,9 @@ filehex: filehex.o hex.o
 swab256: swab256.o hex.o
 	$(COMPILE) -static $^ $(LIBS) -o $@
 
+oneoff: oneoff.o hex.o mmapf.o ec_pubkey_fast.o secp256k1/.libs/libsecp256k1.a
+	$(COMPILE) -static $^ $(LIBS) -o $@
+
 brainflayer: brainflayer.o $(OBJ_UTIL) $(OBJ_ALGO) $(OBJ_SHA256) \
              secp256k1/.libs/libsecp256k1.a scrypt-jane/scrypt-jane.o
 	$(COMPILE) -static $^ $(LIBS) -o $@
