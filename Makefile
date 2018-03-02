@@ -1,5 +1,5 @@
 HEADERS = bloom.h crack.h hash160.h warpwallet.h
-OBJ_MAIN = brainflayer.o hex2blf.o blfchk.o ecmtabgen.o hexln.o sha256ln.o filehex.o
+OBJ_MAIN = brainflayer.o hex2blf.o blfchk.o ecmtabgen.o hexln.o sha256ln.o filehex.o oneoff.o
 OBJ_UTIL = hex.o bloom.o mmapf.o hsearchf.o ec_pubkey_fast.o dldummy.o
 OBJ_ALGO = $(patsubst %.c,%.o,$(wildcard algo/*.c))
 OBJ_SHA256 = sha256/sha256.o
@@ -7,7 +7,7 @@ ifeq ($(shell uname -m),x86_64)
     OBJ_SHA256 += sha256/sha256-avx-asm.o sha256/sha256-avx2-asm.o sha256/sha256-ssse3-asm.o sha256/sha256-ni-asm.o
 endif
 OBJECTS = $(OBJ_MAIN) $(OBJ_UTIL) $(OBJ_ALGO) $(OBJ_SHA256)
-BINARIES = brainflayer hexln sha256ln hex2blf blfchk ecmtabgen filehex
+BINARIES = brainflayer hexln sha256ln hex2blf blfchk ecmtabgen filehex oneoff
 LIBS = -lrt -lcrypto -lz -lgmp
 CFLAGS = -O3 \
          -flto -funsigned-char -falign-functions=16 -falign-loops=16 -falign-jumps=16 \
@@ -76,7 +76,7 @@ hex2blf: hex2blf.o hex.o bloom.o mmapf.o
 	$(COMPILE) -static $^ $(LIBS) -lm -o $@
 
 ecmtabgen: ecmtabgen.o mmapf.o ec_pubkey_fast.o
-	$(COMPILE) -static $^ $(LIBS) -o $@
+	$(COMPILE) -static $^ $(LIBS) -lm -o $@
 
 filehex: filehex.o hex.o
 	$(COMPILE) -static $^ $(LIBS) -o $@
