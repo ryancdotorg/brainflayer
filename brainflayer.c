@@ -31,6 +31,8 @@
 #include "algo/brainwalletio.h"
 #include "algo/sha3.h"
 
+#include "b58/b58.h"
+
 /*  byte conversion */
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 # define be32(x) __builtin_bswap32(x)
@@ -425,6 +427,19 @@ static int mini2priv(unsigned char *priv, unsigned char *pass, size_t pass_sz) {
   return pass2priv(priv, pass, pass_sz);
 }
 
+static int wif2priv(unsigned char *priv, unsigned char *pass, size_t pass_sz) {
+  unsigned char decoded[33];
+  unsigned char ver;
+  ssize_t ret;
+
+  ret = b58d_chk(decoded, sizeof(decoded), pass, pass_sz, &ver);
+  if (ret >= 32) {
+    memcpy(priv, decoded, 32);
+    return 0;
+  }
+  return -1;
+}
+
 // tricksy
 static int script2priv(unsigned char *pub, unsigned char *script, size_t script_sz) {
   Hash160(pub, script, script_sz);
@@ -466,19 +481,20 @@ void usage(unsigned char *name) {
                              e - ethereum address\n\
                              x - most signifigant bits of x coordinate\n\
  -t TYPE                     inputs are TYPE - supported types:\n\
-                             sha256 (default) - classic brainwallet\n\
-                             mini   - Casascius mini private key format\n\
+                             sha256 - classic brainwallet (default)\n\
+                             keccak - keccak256 (ethercamp/old ethaddress)\n\
                              sha3   - sha3-256\n\
+                             wif    - wallet import format\n\
+                             mini   - Casascius mini private key format\n\
                              priv   - raw private keys (requires -x)\n\
                              p2sh   - raw scripts for p2sh (requires -x)\n\
                              warp   - WarpWallet (supports -s or -p)\n\
                              bwio   - brainwallet.io (supports -s or -p)\n\
-                             bv2    - brainv2 (supports -s or -p) VERY SLOW\n\
                              quorum - Quorum Wallet (supports -s or -p)\n\
                              rush   - rushwallet (requires -r) FAST\n\
-                             keccak - keccak256 (ethercamp/old ethaddress)\n\
                              camp2  - keccak256 * 2031 (new ethercamp)\n\
                              parity - Parity Wallet 'recovery phrase' SLOW\n\
+                             bv2    - brainv2 (supports -s or -p) VERY SLOW\n\
  -x                          treat input as hex encoded\n\
  -s SALT                     use SALT for salted input types (default: none)\n\
  -p PASSPHRASE               use PASSPHRASE for salted input types, inputs\n\
@@ -783,6 +799,8 @@ int main(int argc, char **argv) {
     input2priv = &pass2priv;
   } else if (strcmp(topt, "mini") == 0) {
     input2priv = &mini2priv;
+  } else if (strcmp(topt, "wif") == 0) {
+    input2priv = &wif2priv;
   } else if (strcmp(topt, "priv") == 0) {
     if (!xopt && !Sopt && !Iopt) {
       bail(1, "raw private key input requires -x\n");

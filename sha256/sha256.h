@@ -29,6 +29,9 @@ void SHA2_256(uint8_t hash[], const uint8_t data[], size_t len);
 uint64_t SHA2_256_Pad(uint8_t data[], size_t len);
 void SHA2_256_Raw(uint8_t hash[], const uint8_t data[], uint64_t nblk);
 
+void Hash256(uint8_t hash[], const uint8_t data[], size_t len);
+void Hash256_Raw(uint8_t hash[], const uint8_t data[], uint64_t nblk);
+
 void Hash160(uint8_t hash[], const uint8_t data[], size_t len);
 void Hash160_Raw(uint8_t hash[], const uint8_t data[], uint64_t nblk);
 void Hash160_25(uint8_t hash[], const uint8_t data[]);

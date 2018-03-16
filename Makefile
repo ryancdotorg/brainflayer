@@ -1,6 +1,6 @@
 HEADERS = bloom.h crack.h hash160.h warpwallet.h
-OBJ_MAIN = brainflayer.o hex2blf.o blfchk.o ecmtabgen.o hexln.o sha256ln.o filehex.o oneoff.o
-OBJ_UTIL = hex.o bloom.o mmapf.o hsearchf.o ec_pubkey_fast.o dldummy.o
+OBJ_MAIN = brainflayer.o hex2blf.o blfchk.o ecmtabgen.o hexln.o sha256ln.o ffrngln.o filehex.o oneoff.o
+OBJ_UTIL = hex.o bloom.o mmapf.o hsearchf.o ec_pubkey_fast.o dldummy.o b58/b58.o
 OBJ_ALGO = $(patsubst %.c,%.o,$(wildcard algo/*.c))
 OBJ_SHA256 = sha256/sha256.o
 ifeq ($(shell uname -m),x86_64)
