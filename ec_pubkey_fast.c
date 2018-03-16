@@ -111,7 +111,7 @@ int secp256k1_ec_pubkey_precomp_table(int window_size, unsigned char *filename) 
 
   if (filename) { return 0; }
 
-  table = malloc(n_windows*n_values*sizeof(secp256k1_gej_t));
+  table = malloc(n_values*sizeof(secp256k1_gej_t));
 
   secp256k1_gej_set_ge(&gj, &secp256k1_ge_const_g);
 
@@ -133,9 +133,9 @@ int secp256k1_ec_pubkey_precomp_table(int window_size, unsigned char *filename) 
 
   for (int j = 0; j < n_windows; j++) {
     //[number of windows][each value from 0 - (2^window_size - 1)]
-    table[j*n_values] = numsbase;
+    table[0] = numsbase;
     for (int i = 1; i < n_values; i++) {
-      secp256k1_gej_add_var(&table[j*n_values + i], &table[j*n_values + i - 1], &gbase, NULL);
+      secp256k1_gej_add_var(&table[i], &table[i-1], &gbase, NULL);
     }
 
     for (int i = 0; i < window_size; i++) {
@@ -148,8 +148,8 @@ int secp256k1_ec_pubkey_precomp_table(int window_size, unsigned char *filename) 
       secp256k1_gej_neg(&numsbase, &numsbase);
       secp256k1_gej_add_var(&numsbase, &numsbase, &nums_gej, NULL);
     }
+    secp256k1_ge_set_all_gej_var(n_values, &prec[j*n_values], &table[0], 0);
   }
-  secp256k1_ge_set_all_gej_var(n_windows*n_values, prec, table, 0);
 
   free(table);
   return 0;

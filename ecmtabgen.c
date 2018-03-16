@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
 
   fprintf(stderr, "[*] Computing %d x 2^%d point multiplication matrix...\n", act_buckets, act_bits);
 
-  if ((ret = secp256k1_ec_pubkey_precomp_table_save(atoi(argv[1]), argv[2])) < 0)
+  if ((ret = secp256k1_ec_pubkey_precomp_table_save(act_bits, argv[2])) < 0)
     fprintf(stderr, "[!] Failed to write tablefile '%s'\n", argv[2]);
 
   return ret;
