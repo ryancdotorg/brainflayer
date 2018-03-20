@@ -510,6 +510,7 @@ void usage(unsigned char *name) {
                              labeled with DESCRIPTION,OFFSET\n\
  -k K                        skip the first K lines of input\n\
  -n K/N                      use only the Kth of every N input lines\n\
+ -N N                        stop after N input lines or keys\n\
  -B                          batch size for affine transformations\n\
                              must be a power of 2 (default/max: %d)\n\
  -w WINDOW_SIZE              window size for ecmult table (default: 16)\n\
@@ -549,7 +550,7 @@ int main(int argc, char **argv) {
 
   int spok = 0, aopt = 0, vopt = 0, wopt = 16, xopt = 0;
   int nopt_mod = 0, nopt_rem = 0, Bopt = 0;
-  uint64_t kopt = 0;
+  uint64_t kopt = 0, Nopt = ~0ULL;
   unsigned char *bopt = NULL, *iopt = NULL, *oopt = NULL;
   unsigned char *topt = NULL, *sopt = NULL, *popt = NULL;
   unsigned char *mopt = NULL, *fopt = NULL, *ropt = NULL;
@@ -570,7 +571,7 @@ int main(int argc, char **argv) {
   unsigned char batch_priv[BATCH_MAX][32];
   unsigned char batch_upub[BATCH_MAX][65];
 
-  while ((c = getopt(argc, argv, "avxb:hi:k:f:m:n:o:p:s:r:c:t:w:I:D:S:B:")) != -1) {
+  while ((c = getopt(argc, argv, "avxb:hi:k:f:m:n:o:p:s:r:c:t:w:I:D:S:B:N:")) != -1) {
     switch (c) {
       case 'a':
         aopt = 1; // open output file in append mode
@@ -588,6 +589,9 @@ int main(int argc, char **argv) {
         break;
       case 'B':
         Bopt = atoi(optarg);
+        break;
+      case 'N':
+        Nopt = strtoull(optarg, NULL, 0); // allows 0x
         break;
       case 'w':
         if (wopt > 1) wopt = atoi(optarg);
@@ -1122,10 +1126,10 @@ int main(int argc, char **argv) {
     }
     // end public key processing loop
 
+    ilines_curr += batch_stopped;
     // start stats
     if (vopt) {
-      ilines_curr += batch_stopped;
-      if (batch_stopped < Bopt || ilines_curr >= report_next) {
+      if (batch_stopped < Bopt || ilines_curr >= Nopt || ilines_curr >= report_next) {
         time_curr = getns();
         time_delta = time_curr - time_last;
         time_elapsed = time_curr - time_start;
@@ -1171,7 +1175,7 @@ int main(int argc, char **argv) {
     // end stats
 
     // main loop exit condition
-    if (batch_stopped < Bopt) {
+    if (batch_stopped < Bopt || ilines_curr >= Nopt) {
       if (vopt) { fprintf(stderr, "\n"); }
       break;
     }
