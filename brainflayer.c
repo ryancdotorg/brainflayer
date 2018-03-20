@@ -502,6 +502,8 @@ void usage(unsigned char *name) {
  -r FRAGMENT                 use FRAGMENT for cracking rushwallet passphrase\n\
  -I HEXPRIVKEY               incremental private key cracking mode, starting\n\
                              at HEXPRIVKEY (supports -n) FAST\n\
+ -D HEXPRIVKEY               doubling private key cracking mode, starting\n\
+                             at HEXPRIVKEY (a bit faster than -I FAST)\n\
  -S DESCRIPTION              keystream cracking mode, input will be treated\n\
                              as a stream of raw bytes, and each possible offset\n\
                              will be tried as a private key. Output will be\n\
@@ -552,6 +554,7 @@ int main(int argc, char **argv) {
   unsigned char *topt = NULL, *sopt = NULL, *popt = NULL;
   unsigned char *mopt = NULL, *fopt = NULL, *ropt = NULL;
   unsigned char *Iopt = NULL, *copt = NULL, *Sopt = NULL;
+  unsigned char *Dopt = NULL;
 
   unsigned char Sdesc[257];
 
@@ -567,7 +570,7 @@ int main(int argc, char **argv) {
   unsigned char batch_priv[BATCH_MAX][32];
   unsigned char batch_upub[BATCH_MAX][65];
 
-  while ((c = getopt(argc, argv, "avxb:hi:k:f:m:n:o:p:s:r:c:t:w:I:S:B:")) != -1) {
+  while ((c = getopt(argc, argv, "avxb:hi:k:f:m:n:o:p:s:r:c:t:w:I:D:S:B:")) != -1) {
     switch (c) {
       case 'a':
         aopt = 1; // open output file in append mode
@@ -628,6 +631,9 @@ int main(int argc, char **argv) {
         break;
       case 'I':
         Iopt = optarg; // start key for incremental
+        break;
+      case 'D':
+        Dopt = optarg; // start key for doubling
         break;
       case 'S':
         Sopt = optarg; // description for keystream
@@ -716,6 +722,28 @@ int main(int argc, char **argv) {
     if (!nopt_mod) { nopt_mod = 1; };
   }
 
+  if (Dopt) {
+    if (strlen(Dopt) != 64) {
+      bail(1, "The starting key passed to the '-D' must be 64 hex digits exactly\n");
+    }
+    if (xopt) {
+      bail(1, "Hex input not meaningful in doubling mode\n");
+    }
+    if (topt) {
+      bail(1, "Cannot specify input type in doubling mode\n");
+    }
+    if (Iopt) {
+      bail(1, "Doubling mode and incremental mode cannot be used together\n");
+    }
+    topt = "priv";
+    // normally, getline would allocate the batch_line entries, but we need to
+    // do this to give the processing loop somewhere to write to in incr mode
+    for (i = 0; i < BATCH_MAX; ++i) {
+      batch_line[i] = Dopt;
+    }
+    unhex(Dopt, sizeof(priv)*2, priv, sizeof(priv));
+  }
+
   if (Sopt) {
     if (xopt) {
       bail(1, "Hex input not supported in keystream mode\n");
@@ -725,6 +753,9 @@ int main(int argc, char **argv) {
     }
     if (Iopt) {
       bail(1, "Stream mode and incremental mode cannot be used together\n");
+    }
+    if (Iopt) {
+      bail(1, "Stream mode and doubling mode cannot be used together\n");
     }
     if (strnlen(Sopt, 257) > 256) {
       bail(1, "Maximum keystream description length is 256 bytes\n");
@@ -802,7 +833,7 @@ int main(int argc, char **argv) {
   } else if (strcmp(topt, "wif") == 0) {
     input2priv = &wif2priv;
   } else if (strcmp(topt, "priv") == 0) {
-    if (!xopt && !Sopt && !Iopt) {
+    if (!xopt && !Sopt && !Iopt && !Dopt) {
       bail(1, "raw private key input requires -x\n");
     }
     input2priv = &rawpriv2priv;
@@ -967,6 +998,12 @@ int main(int argc, char **argv) {
       priv_add_uint32(priv, nopt_mod);
 
       batch_stopped = Bopt;
+    } else if (Dopt) {
+      secp256k1_ec_pubkey_batch_double(Bopt, batch_upub, batch_priv, priv);
+      memcpy(priv, batch_priv[Bopt-1], 32);
+      priv_double(priv);
+
+      batch_stopped = Bopt;
     } else if (Sopt) {
       Slines_last = Slines_curr;
       // copy remaing bytes from last round to front of stream
@@ -1052,7 +1089,7 @@ int main(int argc, char **argv) {
 #endif//SHOW_DUPLICATE_HITS
                 if (tty) { fprintf(ofile, "\033[0K"); }
                 // reformat/populate the line if required
-                if (Iopt) {
+                if (Iopt || Dopt) {
                   hex(batch_priv[i], 32, batch_line[i], 65);
                 } else if (Sopt) {
                   hex(batch_priv[i], 32, batch_line[i], 65);
@@ -1070,7 +1107,7 @@ int main(int argc, char **argv) {
         }
       } else { /* generate mode */
         // reformat/populate the line if required
-        if (Iopt) {
+        if (Iopt || Dopt) {
           hex(batch_priv[i], 32, batch_line[i], 65);
         } else if (Sopt) {
           hex(batch_priv[i], 32, batch_line[i], 65);

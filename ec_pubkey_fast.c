@@ -406,6 +406,69 @@ int secp256k1_ec_pubkey_batch_incr(unsigned int num, unsigned int skip, unsigned
   return 0;
 }
 
+inline static int secp256k1_scalar_double(secp256k1_scalar_t *r, const secp256k1_scalar_t *a) {
+  int overflow;
+  unsigned int t, u; /* should only ever contain 0 or 1 */
+
+  /* double by bitwise shift left */
+#if defined(USE_SCALAR_4X64)
+         t = a->d[0] >> 63; r->d[0] =     (a->d[0] << 1);
+  u = t; t = a->d[1] >> 63; r->d[1] = u | (a->d[1] << 1);
+  u = t; t = a->d[2] >> 63; r->d[2] = u | (a->d[2] << 1);
+  u = t; t = a->d[3] >> 63; r->d[3] = u | (a->d[3] << 1);
+#elif defined(USE_SCALAR_8X32)
+         t = a->d[0] >> 31; r->d[0] =     (a->d[0] << 1);
+  u = t; t = a->d[1] >> 31; r->d[1] = u | (a->d[1] << 1);
+  u = t; t = a->d[2] >> 31; r->d[2] = u | (a->d[2] << 1);
+  u = t; t = a->d[3] >> 31; r->d[3] = u | (a->d[3] << 1);
+  u = t; t = a->d[4] >> 31; r->d[4] = u | (a->d[4] << 1);
+  u = t; t = a->d[5] >> 31; r->d[5] = u | (a->d[5] << 1);
+  u = t; t = a->d[6] >> 31; r->d[6] = u | (a->d[6] << 1);
+  u = t; t = a->d[7] >> 31; r->d[7] = u | (a->d[7] << 1);
+#else
+#error "Please configure libsecp256k1's scalar implementation"
+#endif
+
+  overflow = t + secp256k1_scalar_check_overflow(r);
+  VERIFY_CHECK(overflow == 0 || overflow == 1);
+  secp256k1_scalar_reduce(r, overflow);
+  return overflow;
+}
+
+// call secp256k1_ec_pubkey_batch_init first or you get segfaults
+int secp256k1_ec_pubkey_batch_double(unsigned int num, unsigned char (*pub)[65], unsigned char (*sec)[32], unsigned char start[32]) {
+  int i;
+  secp256k1_scalar_t priv;
+
+  /* first iteration, load start key and generate public */
+  secp256k1_scalar_set_b32(&priv, start, NULL);
+  secp256k1_ecmult_gen_b32(&batchpj[0], start);
+  secp256k1_scalar_get_b32(sec[0], &priv);
+
+  for (i = 1; i < num; ++i) {
+    secp256k1_scalar_double(&priv, &priv);
+    /* serialize private key */
+    secp256k1_scalar_get_b32(sec[i], &priv);
+    /* double public key */
+    secp256k1_gej_double_var(&batchpj[i], &batchpj[i-1], NULL);
+  }
+
+  /* convert all jacobian coordinates to affine */
+  secp256k1_ge_set_all_gej_static(num, batchpa, batchpj);
+
+  /* write out formatted public keys */
+  for (i = 0; i < num; ++i) {
+    secp256k1_fe_normalize_var(&batchpa[i].x);
+    secp256k1_fe_normalize_var(&batchpa[i].y);
+
+    pub[i][0] = 0x04;
+    secp256k1_fe_get_b32(pub[i] +  1, &batchpa[i].x);
+    secp256k1_fe_get_b32(pub[i] + 33, &batchpa[i].y);
+  }
+
+  return 0;
+}
+
 // call secp256k1_ec_pubkey_batch_init first or you get segfaults
 int secp256k1_ec_pubkey_batch_create(unsigned int num, unsigned char (*pub)[65], unsigned char (*sec)[32]) {
   int i;
@@ -468,6 +531,13 @@ void priv_add_uint32(unsigned char *priv, unsigned int add) {
     _priv_add(priv, add & 255, p--);
     add >>= 8;
   }
+}
+
+void priv_double(unsigned char *priv) {
+  secp256k1_scalar_t t;
+  secp256k1_scalar_set_b32(&t, priv, NULL);
+  secp256k1_scalar_double(&t, &t);
+  secp256k1_scalar_get_b32(priv, &t);
 }
 
 typedef struct {
