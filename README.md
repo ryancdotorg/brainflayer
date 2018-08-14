@@ -135,7 +135,7 @@ Building
 --------
 
 Should compile on Linux with `make` provided you have the required devel libs
-installed (at least openssl and gpm are required along with libsecp256k1's
+installed (at least openssl and gmp are required along with libsecp256k1's
 build dependencies). I really need to learn autotools. If you file an issue
 about a build failure in libsecp256k1 I will close it.
 
