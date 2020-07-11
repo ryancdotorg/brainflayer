@@ -4,7 +4,7 @@ OBJ_UTIL = hex.o bloom.o mmapf.o hsearchf.o ec_pubkey_fast.o ripemd160_256.o dld
 OBJ_ALGO = $(patsubst %.c,%.o,$(wildcard algo/*.c))
 OBJECTS = $(OBJ_MAIN) $(OBJ_UTIL) $(OBJ_ALGO)
 BINARIES = brainflayer hexln hex2blf blfchk ecmtabgen filehex
-LIBS = -lssl -lrt -lcrypto -lz -lgmp
+LIBS = -lssl -lrt -lcrypto -lz -lgmp -lpthread
 CFLAGS = -O3 \
          -flto -funsigned-char -falign-functions=16 -falign-loops=16 -falign-jumps=16 \
          -Wall -Wextra -Wno-pointer-sign -Wno-sign-compare \
@@ -49,23 +49,23 @@ ec_pubkey_fast.o: ec_pubkey_fast.c secp256k1/include/secp256k1.h
 	$(COMPILE) -c $< -o $@
 
 hexln: hexln.o hex.o
-	$(COMPILE) -static $^ $(LIBS) -o $@
+	$(COMPILE) $^ $(LIBS) -o $@
 
 blfchk: blfchk.o hex.o bloom.o mmapf.o hsearchf.o
-	$(COMPILE) -static $^ $(LIBS) -o $@
+	$(COMPILE) $^ $(LIBS) -o $@
 
 hex2blf: hex2blf.o hex.o bloom.o mmapf.o
-	$(COMPILE) -static $^ $(LIBS) -lm -o $@
+	$(COMPILE) $^ $(LIBS) -lm -o $@
 
 ecmtabgen: ecmtabgen.o mmapf.o ec_pubkey_fast.o
-	$(COMPILE) -static $^ $(LIBS) -o $@
+	$(COMPILE) $^ $(LIBS) -o $@
 
 filehex: filehex.o hex.o
-	$(COMPILE) -static $^ $(LIBS) -o $@
+	$(COMPILE) $^ $(LIBS) -o $@
 
 brainflayer: brainflayer.o $(OBJ_UTIL) $(OBJ_ALGO) \
              secp256k1/.libs/libsecp256k1.a scrypt-jane/scrypt-jane.o
-	$(COMPILE) -static $^ $(LIBS) -o $@
+	$(COMPILE) $^ $(LIBS) -o $@
 
 clean:
 	rm -f $(BINARIES) $(OBJECTS)
