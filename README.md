@@ -1,6 +1,13 @@
 Brainflayer
 ===========
 
+Update: July 11, 2020
+
+Make changes in Makefile, to make Brainflayer compile successfully on Ubuntu 20.04 and Ubuntu 18.04.
+
+Below this line is the original Brainflayer README
+----------------------------------------------------------------------------------------------------
+
 Brainflayer is a Proof-of-Concept brainwallet cracking tool that uses
 [libsecp256k1](https://github.com/bitcoin/secp256k1) for pubkey generation.
 It was originally released as part of my DEFCON talk about cracking brainwallets
