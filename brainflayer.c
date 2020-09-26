@@ -915,29 +915,49 @@ int main(int argc, char **argv) {
 
     // loop over the public keys
     for (i = 0; i < batch_stopped; ++i) {
-      j = 0;
       if (bloom) { /* crack mode */
         // loop over pubkey hash functions
-        while (pubhashfn[j].fn != NULL) {
+        for (j = 0; pubhashfn[j].fn != NULL; ++j) {
           pubhashfn[j].fn(&hash160, batch_upub[i]);
-          if (bloom_chk_hash160(bloom, hash160.ul)) {
-            if (!fopt || hsearchf(ffile, &hash160)) {
-              if (tty) { fprintf(ofile, "\033[0K"); }
-              // reformat/populate the line if required
-              if (Iopt) {
-                hex(batch_priv[i], 32, batch_line[i], 65);
-              }
-              fprintresult(ofile, &hash160, pubhashfn[j].id, modestr, batch_line[i]);
-              ++olines;
+
+          unsigned int bit;
+          bit = BH00(hash160.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+          bit = BH01(hash160.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+          bit = BH02(hash160.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+          bit = BH03(hash160.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+          bit = BH04(hash160.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+          bit = BH05(hash160.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+          bit = BH06(hash160.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+          bit = BH07(hash160.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+          bit = BH08(hash160.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+          bit = BH09(hash160.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+          bit = BH10(hash160.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+          bit = BH11(hash160.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+          bit = BH12(hash160.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+          bit = BH13(hash160.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+          bit = BH14(hash160.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+          bit = BH15(hash160.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+          bit = BH16(hash160.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+          bit = BH17(hash160.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+          bit = BH18(hash160.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+          bit = BH19(hash160.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+
+          if (!fopt || hsearchf(ffile, &hash160)) {
+            if (tty) { fprintf(ofile, "\033[0K"); }
+            // reformat/populate the line if required
+            if (Iopt) {
+              hex(batch_priv[i], 32, batch_line[i], 65);
             }
+            fprintresult(ofile, &hash160, pubhashfn[j].id, modestr, batch_line[i]);
+            ++olines;
           }
-          ++j;
         }
       } else { /* generate mode */
         // reformat/populate the line if required
         if (Iopt) {
           hex(batch_priv[i], 32, batch_line[i], 65);
         }
+        j = 0;
         while (pubhashfn[j].fn != NULL) {
           pubhashfn[j].fn(&hash160, batch_upub[i]);
           fprintresult(ofile, &hash160, pubhashfn[j].id, modestr, batch_line[i]);
