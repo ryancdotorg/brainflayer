@@ -31,17 +31,6 @@
 #include "algo/brainwalletio.h"
 #include "algo/sha3.h"
 
-#include "b58/b58.h"
-
-/*  byte conversion */
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-# define be32(x) __builtin_bswap32(x)
-# define be64(x) __builtin_bswap64(x)
-#else
-# define be32(x) (x)
-# define be64(x) (x)
-#endif
-
 // raise this if you really want, but quickly diminishing returns
 #define BATCH_MAX 4096
 
@@ -51,13 +40,6 @@ typedef struct pubhashfn_s {
    void (*fn)(hash160_t *, const unsigned char *);
    char id;
 } pubhashfn_t;
-
-static unsigned char keystream[BATCH_MAX+32];
-
-#ifndef SHOW_DUPLICATE_HITS
-static unsigned char *hits;
-static int hits_max = 65536;
-#endif//SHOW_DUPLICATE_HITS
 
 static unsigned char *mem;
 
@@ -106,9 +88,6 @@ static inline void brainflayer_init_globals() {
     SHA2_256_Register();
     /* initialize buffers */
     mem = chkmalloc(4096);
-#ifndef SHOW_DUPLICATE_HITS
-    hits = chkmalloc(40 * hits_max);
-#endif//SHOW_DUPLICATE_HITS
     unhexed = chkmalloc(unhexed_sz);
 
     /* set the flag */
@@ -234,13 +213,14 @@ static void xhash160(hash160_t *h, const unsigned char *upub) {
   memcpy(h->uc, upub+1, 20);
 }
 
-/* msb of entire public key */
-static void shash160(hash160_t *h, const unsigned char *upub) {
-  memcpy(h->uc, upub, 20);
-}
+
 
 static int pass2priv(unsigned char *priv, unsigned char *pass, size_t pass_sz) {
-  SHA2_256(priv, pass, pass_sz);
+  SHA2_256_CTX ctx;
+
+  SHA2_256_Init(&ctx);
+  SHA2_256_Update(&ctx, pass, pass_sz);
+  SHA2_256_Final(priv, &ctx);
 
   return 0;
 }
@@ -427,24 +407,20 @@ static int mini2priv(unsigned char *priv, unsigned char *pass, size_t pass_sz) {
   return pass2priv(priv, pass, pass_sz);
 }
 
-static int wif2priv(unsigned char *priv, unsigned char *pass, size_t pass_sz) {
-  unsigned char decoded[33];
-  unsigned char ver;
-  ssize_t ret;
+inline static int priv_incr(unsigned char *upub, unsigned char *priv) {
+  int sz;
 
-  ret = b58d_chk(decoded, sizeof(decoded), pass, pass_sz, &ver);
-  if (ret >= 32) {
-    memcpy(priv, decoded, 32);
-    return 0;
-  }
-  return -1;
-}
+  secp256k1_ec_pubkey_incr(upub, &sz, priv);
 
-// tricksy
-static int script2priv(unsigned char *pub, unsigned char *script, size_t script_sz) {
-  Hash160(pub, script, script_sz);
   return 0;
 }
+
+inline static void priv2pub(unsigned char *upub, const unsigned char *priv) {
+  int sz;
+
+  secp256k1_ec_pubkey_create_precomp(upub, &sz, priv);
+}
+
 
 inline static void fprintresult(FILE *f, hash160_t *hash,
                                 unsigned char compressed,
@@ -481,20 +457,18 @@ void usage(unsigned char *name) {
                              e - ethereum address\n\
                              x - most signifigant bits of x coordinate\n\
  -t TYPE                     inputs are TYPE - supported types:\n\
-                             sha256 - classic brainwallet (default)\n\
-                             keccak - keccak256 (ethercamp/old ethaddress)\n\
-                             sha3   - sha3-256\n\
-                             wif    - wallet import format\n\
+                             sha256 (default) - classic brainwallet\n\
                              mini   - Casascius mini private key format\n\
+                             sha3   - sha3-256\n\
                              priv   - raw private keys (requires -x)\n\
-                             p2sh   - raw scripts for p2sh (requires -x)\n\
                              warp   - WarpWallet (supports -s or -p)\n\
                              bwio   - brainwallet.io (supports -s or -p)\n\
+                             bv2    - brainv2 (supports -s or -p) VERY SLOW\n\
                              quorum - Quorum Wallet (supports -s or -p)\n\
                              rush   - rushwallet (requires -r) FAST\n\
+                             keccak - keccak256 (ethercamp/old ethaddress)\n\
                              camp2  - keccak256 * 2031 (new ethercamp)\n\
-                             parity - Parity Wallet 'recovery phrase' SLOW\n\
-                             bv2    - brainv2 (supports -s or -p) VERY SLOW\n\
+                             parity - Parity Wallet 'recovery phrase'\n\
  -x                          treat input as hex encoded\n\
  -s SALT                     use SALT for salted input types (default: none)\n\
  -p PASSPHRASE               use PASSPHRASE for salted input types, inputs\n\
@@ -502,16 +476,9 @@ void usage(unsigned char *name) {
  -r FRAGMENT                 use FRAGMENT for cracking rushwallet passphrase\n\
  -I HEXPRIVKEY               incremental private key cracking mode, starting\n\
                              at HEXPRIVKEY (supports -n) FAST\n\
- -D HEXPRIVKEY               doubling private key cracking mode, starting\n\
-                             at HEXPRIVKEY (a bit faster than -I FAST)\n\
- -S DESCRIPTION              keystream cracking mode, input will be treated\n\
-                             as a stream of raw bytes, and each possible offset\n\
-                             will be tried as a private key. Output will be\n\
-                             labeled with DESCRIPTION,OFFSET\n\
  -k K                        skip the first K lines of input\n\
  -n K/N                      use only the Kth of every N input lines\n\
- -N N                        stop after N input lines or keys\n\
- -B                          batch size for affine transformations\n\
+ -B BATCH_SIZE               batch size for affine transformations\n\
                              must be a power of 2 (default/max: %d)\n\
  -w WINDOW_SIZE              window size for ecmult table (default: 16)\n\
                              uses about 3 * 2^w KiB memory on startup, but\n\
@@ -530,9 +497,6 @@ int main(int argc, char **argv) {
   FILE *ffile = NULL;
 
   int ret, c, i, j;
-#ifndef SHOW_DUPLICATE_HITS
-  int k;
-#endif//SHOW_DUPLICATE_HITS
 
   float alpha, ilines_rate, ilines_rate_avg;
   int64_t raw_lines = -1;
@@ -541,7 +505,6 @@ int main(int argc, char **argv) {
   uint64_t time_last, time_curr, time_delta;
   uint64_t time_start, time_elapsed;
   uint64_t ilines_last, ilines_curr, ilines_delta;
-  uint64_t Slines_last, Slines_curr;
   uint64_t olines;
 
   int skipping = 0, tty = 0;
@@ -550,14 +513,11 @@ int main(int argc, char **argv) {
 
   int spok = 0, aopt = 0, vopt = 0, wopt = 16, xopt = 0;
   int nopt_mod = 0, nopt_rem = 0, Bopt = 0;
-  uint64_t kopt = 0, Nopt = ~0ULL;
+  uint64_t kopt = 0;
   unsigned char *bopt = NULL, *iopt = NULL, *oopt = NULL;
   unsigned char *topt = NULL, *sopt = NULL, *popt = NULL;
   unsigned char *mopt = NULL, *fopt = NULL, *ropt = NULL;
-  unsigned char *Iopt = NULL, *copt = NULL, *Sopt = NULL;
-  unsigned char *Dopt = NULL;
-
-  unsigned char Sdesc[257];
+  unsigned char *Iopt = NULL, *copt = NULL;
 
   unsigned char priv[64];
   hash160_t hash160;
@@ -571,7 +531,7 @@ int main(int argc, char **argv) {
   unsigned char batch_priv[BATCH_MAX][32];
   unsigned char batch_upub[BATCH_MAX][65];
 
-  while ((c = getopt(argc, argv, "avxb:hi:k:f:m:n:o:p:s:r:c:t:w:I:D:S:B:N:")) != -1) {
+  while ((c = getopt(argc, argv, "avxb:hi:k:f:m:n:o:p:s:r:c:t:w:I:B:")) != -1) {
     switch (c) {
       case 'a':
         aopt = 1; // open output file in append mode
@@ -589,9 +549,6 @@ int main(int argc, char **argv) {
         break;
       case 'B':
         Bopt = atoi(optarg);
-        break;
-      case 'N':
-        Nopt = strtoull(optarg, NULL, 0); // allows 0x
         break;
       case 'w':
         if (wopt > 1) wopt = atoi(optarg);
@@ -635,12 +592,7 @@ int main(int argc, char **argv) {
         break;
       case 'I':
         Iopt = optarg; // start key for incremental
-        break;
-      case 'D':
-        Dopt = optarg; // start key for doubling
-        break;
-      case 'S':
-        Sopt = optarg; // description for keystream
+        xopt = 1; // input is hex encoded
         break;
       case 'h':
         // show help
@@ -681,10 +633,6 @@ int main(int argc, char **argv) {
     }
   }
 
-  //if (wopt && mopt) {
-  //  bail(1, "Window size cannot be manually specified when using an ecmult table\n");
-  //} else
-  /* values of 17, 21, 23, 25, 27, 28, 30, 31 just waste memory */
   if (wopt < 1 || wopt > 28) {
     bail(1, "Invalid window size '%d' - must be >= 1 and <= 28\n", wopt);
   } else {
@@ -700,17 +648,14 @@ int main(int argc, char **argv) {
   if (Bopt) { // if unset, will be set later
     if (Bopt < 1 || Bopt > BATCH_MAX) {
       bail(1, "Invalid '-B' argument, batch size '%d' - must be >= 1 and <= %d\n", Bopt, BATCH_MAX);
-    //} else if (Bopt & (Bopt - 1)) { // https://graphics.stanford.edu/~seander/bithacks.html#DetermineIfPowerOf2
-    //  bail(1, "Invalid '-B' argument, batch size '%d' is not a power of 2\n", Bopt);
+    } else if (Bopt & (Bopt - 1)) { // https://graphics.stanford.edu/~seander/bithacks.html#DetermineIfPowerOf2
+      bail(1, "Invalid '-B' argument, batch size '%d' is not a power of 2\n", Bopt);
     }
   }
 
   if (Iopt) {
     if (strlen(Iopt) != 64) {
       bail(1, "The starting key passed to the '-I' must be 64 hex digits exactly\n");
-    }
-    if (xopt) {
-      bail(1, "Hex input not meaningful in incremental mode\n");
     }
     if (topt) {
       bail(1, "Cannot specify input type in incremental mode\n");
@@ -726,105 +671,50 @@ int main(int argc, char **argv) {
     if (!nopt_mod) { nopt_mod = 1; };
   }
 
-  if (Dopt) {
-    if (strlen(Dopt) != 64) {
-      bail(1, "The starting key passed to the '-D' must be 64 hex digits exactly\n");
-    }
-    if (xopt) {
-      bail(1, "Hex input not meaningful in doubling mode\n");
-    }
-    if (topt) {
-      bail(1, "Cannot specify input type in doubling mode\n");
-    }
-    if (Iopt) {
-      bail(1, "Doubling mode and incremental mode cannot be used together\n");
-    }
-    topt = "priv";
-    // normally, getline would allocate the batch_line entries, but we need to
-    // do this to give the processing loop somewhere to write to in incr mode
-    for (i = 0; i < BATCH_MAX; ++i) {
-      batch_line[i] = Dopt;
-    }
-    unhex(Dopt, sizeof(priv)*2, priv, sizeof(priv));
-  }
-
-  if (Sopt) {
-    if (xopt) {
-      bail(1, "Hex input not supported in keystream mode\n");
-    }
-    if (topt) {
-      bail(1, "Cannot specify input type in keystream mode\n");
-    }
-    if (Iopt) {
-      bail(1, "Stream mode and incremental mode cannot be used together\n");
-    }
-    if (Iopt) {
-      bail(1, "Stream mode and doubling mode cannot be used together\n");
-    }
-    if (strnlen(Sopt, 257) > 256) {
-      bail(1, "Maximum keystream description length is 256 bytes\n");
-    }
-
-    strncpy(Sdesc, Sopt, 256);
-    Sdesc[256] = 0;
-
-    topt = "priv";
-
-    if ((batch_line[0] = malloc(64+1+256+1+20)) == NULL) {
-      bail(1, "Failed to allocate output strings\n");
-    }
-    for (i = 1; i < BATCH_MAX; ++i) {
-      batch_line[i] = batch_line[0];
-    }
-  }
 
   /* handle copt */
-  if (copt == NULL) {
-    pubhashfn[0].fn = &uhash160; pubhashfn[0].id = 'u';
-    pubhashfn[1].fn = &chash160; pubhashfn[1].id = 'c';
-  } else {
-    i = 0;
-    while (copt[i]) {
-      switch (copt[i]) {
-        case 'u':
-          pubhashfn[i].fn = &uhash160;
-          break;
-        case 'c':
-          pubhashfn[i].fn = &chash160;
-          break;
-        case 'H':
-          pubhashfn[i].fn = &Hhash160;
-          break;
-        case 'h':
-          pubhashfn[i].fn = &hhash160;
-          break;
-        case 'P':
-          pubhashfn[i].fn = &Phash160;
-          break;
-        case 'p':
-          pubhashfn[i].fn = &phash160;
-          break;
-        case 'M':
-          pubhashfn[i].fn = &Mhash160;
-          break;
-        case 'm':
-          pubhashfn[i].fn = &mhash160;
-          break;
-        case 'e':
-          pubhashfn[i].fn = &ehash160;
-          break;
-        case 'x':
-          pubhashfn[i].fn = &xhash160;
-          break;
-        default:
-          bail(1, "Unknown hash160 type '%c'.\n", copt[i]);
-      }
-      if (strchr(copt + i + 1, copt[i])) {
-        bail(1, "Duplicate hash160 type '%c'.\n", copt[i]);
-      }
-      pubhashfn[i].id = copt[i];
-      ++i;
+  if (copt == NULL) { copt = "uc"; }
+  i = 0;
+  while (copt[i]) {
+    switch (copt[i]) {
+      case 'u':
+        pubhashfn[i].fn = &uhash160;
+        break;
+      case 'c':
+        pubhashfn[i].fn = &chash160;
+        break;
+      case 'H':
+        pubhashfn[i].fn = &Hhash160;
+        break;
+      case 'h':
+        pubhashfn[i].fn = &hhash160;
+        break;
+      case 'P':
+        pubhashfn[i].fn = &Phash160;
+        break;
+      case 'p':
+        pubhashfn[i].fn = &phash160;
+        break;
+      case 'M':
+        pubhashfn[i].fn = &Mhash160;
+        break;
+      case 'm':
+        pubhashfn[i].fn = &mhash160;
+        break;
+      case 'e':
+        pubhashfn[i].fn = &ehash160;
+        break;
+      case 'x':
+        pubhashfn[i].fn = &xhash160;
+        break;
+      default:
+        bail(1, "Unknown hash160 type '%c'.\n", copt[i]);
     }
+    if (strchr(copt + i + 1, copt[i])) {
+      bail(1, "Duplicate hash160 type '%c'.\n", copt[i]);
+    }
+    pubhashfn[i].id = copt[i];
+    ++i;
   }
 
   /* handle topt */
@@ -834,23 +724,11 @@ int main(int argc, char **argv) {
     input2priv = &pass2priv;
   } else if (strcmp(topt, "mini") == 0) {
     input2priv = &mini2priv;
-  } else if (strcmp(topt, "wif") == 0) {
-    input2priv = &wif2priv;
   } else if (strcmp(topt, "priv") == 0) {
-    if (!xopt && !Sopt && !Iopt && !Dopt) {
-      bail(1, "raw private key input requires -x\n");
+    if (!xopt) {
+      bail(1, "raw private key input requires -x");
     }
     input2priv = &rawpriv2priv;
-  } else if (strcmp(topt, "p2sh") == 0) {
-    if (!xopt) {
-      bail(1, "raw script input requires -x\n");
-    }
-    if (copt) {
-      bail(1, "hash160 type cannot be set for raw script input\n");
-    }
-    pubhashfn[0].fn = &shash160; pubhashfn[0].id = 's';
-    pubhashfn[1].fn = NULL;      pubhashfn[1].id = 0x0;
-    input2priv = &script2priv;
   } else if (strcmp(topt, "warp") == 0) {
     if (!Bopt) { Bopt = 1; } // don't batch transform for slow input hashes by default
     spok = 1;
@@ -877,6 +755,8 @@ int main(int argc, char **argv) {
     input2priv = &keccak2priv;
   } else if (strcmp(topt, "sha3") == 0) {
     input2priv = &sha32priv;
+//  } else if (strcmp(topt, "dicap") == 0) {
+//    input2priv = &dicap2priv;
   } else {
     bail(1, "Unknown input type '%s'.\n", topt);
   }
@@ -982,15 +862,6 @@ int main(int argc, char **argv) {
   // set default batch size
   if (!Bopt) { Bopt = BATCH_MAX; }
 
-  // needs to be done fairly late...
-  if (Sopt) {
-    ks_tables_init();
-    if (fread(keystream + Bopt, 1, 31, ifile) != 31) {
-      bail(1, "could not read enough bytes from to initialize keystream\n");
-    }
-    Slines_last = Slines_curr = 0;
-  }
-
   for (;;) {
     if (Iopt) {
       if (skipping) {
@@ -1002,24 +873,6 @@ int main(int argc, char **argv) {
       priv_add_uint32(priv, nopt_mod);
 
       batch_stopped = Bopt;
-    } else if (Dopt) {
-      secp256k1_ec_pubkey_batch_double(Bopt, batch_upub, batch_priv, priv);
-      memcpy(priv, batch_priv[Bopt-1], 32);
-      priv_double(priv);
-
-      batch_stopped = Bopt;
-    } else if (Sopt) {
-      Slines_last = Slines_curr;
-      // copy remaing bytes from last round to front of stream
-      memcpy(keystream, keystream + Bopt, 31);
-      batch_stopped = fread(keystream+31, 1, Bopt, ifile);
-      if (batch_stopped <= 0) {
-        batch_stopped = 0;
-        break;
-      } else {
-        secp256k1_ec_pubkey_batch_stream(batch_stopped, batch_upub, batch_priv, keystream);
-        Slines_curr += batch_stopped;
-      }
     } else {
       for (i = 0; i < Bopt; ++i) {
         if ((batch_line_read[i] = getline(&batch_line[i], &batch_line_sz[i], ifile)-1) > -1) {
@@ -1039,18 +892,10 @@ int main(int argc, char **argv) {
           }
           // rewrite the input line from hex
           unhex(batch_line[i], batch_line_read[i], unhexed, unhexed_sz);
-          if (input2priv == &script2priv) {
-            if (script2priv(batch_upub[i], unhexed, batch_line_read[i]/2) != 0) {
-              //fprintf(stderr, "script2priv failed! continuing...\n");
-              // skip this key
-              ++ilines_curr; --i;
-            }
-          } else {
-            if (input2priv(batch_priv[i], unhexed, batch_line_read[i]/2) != 0) {
-              //fprintf(stderr, "input2priv failed! continuing...\n");
-              // skip this key
-              ++ilines_curr; --i;
-            }
+          if (input2priv(batch_priv[i], unhexed, batch_line_read[i]/2) != 0) {
+            //fprintf(stderr, "input2priv failed! continuing...\n");
+            // skip this key
+            ++ilines_curr; --i;
           }
         } else {
           if (input2priv(batch_priv[i], batch_line[i], batch_line_read[i]) != 0) {
@@ -1061,10 +906,8 @@ int main(int argc, char **argv) {
         }
       }
 
-      if (input2priv != &script2priv) {
-        // batch compute the public keys
-        secp256k1_ec_pubkey_batch_create(Bopt, batch_upub, batch_priv);
-      }
+      // batch compute the public keys
+      secp256k1_ec_pubkey_batch_create(Bopt, batch_upub, batch_priv);
 
       // save ending value from read loop
       batch_stopped = i;
@@ -1079,43 +922,21 @@ int main(int argc, char **argv) {
           pubhashfn[j].fn(&hash160, batch_upub[i]);
           if (bloom_chk_hash160(bloom, hash160.ul)) {
             if (!fopt || hsearchf(ffile, &hash160)) {
-#ifndef SHOW_DUPLICATE_HITS
-              // look for duplicates
-              for (k = 0; k < olines; ++k) {
-                if (memcmp(hits + (k*40), &hash160, 40) == 0) {
-                  k = -1;
-                  break;
-                }
+              if (tty) { fprintf(ofile, "\033[0K"); }
+              // reformat/populate the line if required
+              if (Iopt) {
+                hex(batch_priv[i], 32, batch_line[i], 65);
               }
-              if (k >= 0) {
-#else
-              if (1) {
-#endif//SHOW_DUPLICATE_HITS
-                if (tty) { fprintf(ofile, "\033[0K"); }
-                // reformat/populate the line if required
-                if (Iopt || Dopt) {
-                  hex(batch_priv[i], 32, batch_line[i], 65);
-                } else if (Sopt) {
-                  hex(batch_priv[i], 32, batch_line[i], 65);
-                  sprintf(batch_line[i]+64, ":%s,%zu", Sdesc, Slines_last + i);
-                }
-                fprintresult(ofile, &hash160, pubhashfn[j].id, modestr, batch_line[i]);
-#ifndef SHOW_DUPLICATE_HITS
-                if (k < hits_max) { memcpy(hits + (k*40), &hash160, 40); }
-#endif//SHOW_DUPLICATE_HITS
-                ++olines;
-              }
+              fprintresult(ofile, &hash160, pubhashfn[j].id, modestr, batch_line[i]);
+              ++olines;
             }
           }
           ++j;
         }
       } else { /* generate mode */
         // reformat/populate the line if required
-        if (Iopt || Dopt) {
+        if (Iopt) {
           hex(batch_priv[i], 32, batch_line[i], 65);
-        } else if (Sopt) {
-          hex(batch_priv[i], 32, batch_line[i], 65);
-          sprintf(batch_line[i]+64, ":%s,%zu", Sdesc, Slines_last + i);
         }
         while (pubhashfn[j].fn != NULL) {
           pubhashfn[j].fn(&hash160, batch_upub[i]);
@@ -1126,10 +947,10 @@ int main(int argc, char **argv) {
     }
     // end public key processing loop
 
-    ilines_curr += batch_stopped;
     // start stats
     if (vopt) {
-      if (batch_stopped < Bopt || ilines_curr >= Nopt || ilines_curr >= report_next) {
+      ilines_curr += batch_stopped;
+      if (batch_stopped < Bopt || ilines_curr >= report_next) {
         time_curr = getns();
         time_delta = time_curr - time_last;
         time_elapsed = time_curr - time_start;
@@ -1175,7 +996,7 @@ int main(int argc, char **argv) {
     // end stats
 
     // main loop exit condition
-    if (batch_stopped < Bopt || ilines_curr >= Nopt) {
+    if (batch_stopped < Bopt) {
       if (vopt) { fprintf(stderr, "\n"); }
       break;
     }
