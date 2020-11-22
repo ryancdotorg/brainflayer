@@ -27,7 +27,6 @@ int main(int argc, char **argv) {
   hash160_t hash;
   char *line = NULL;
   size_t line_sz = 0;
-  unsigned char buf[128];
   unsigned char *bloom, *bloomfile, *hashfile;
   FILE *ifile = stdin, *ofile = stdout, *hfile = NULL;
   mmapf_ctx bloom_mmapf;
