@@ -1,9 +1,18 @@
 Brainflayer
 ===========
 
-Update: Nov 18, 2020
+Update: Jan 10, 2021
 
-Make changes in Makefile, to make Brainflayer compile successfully on Ubuntu 18.04 and Ubuntu 20.04.
+Ubuntu 18.04
+
+Make changes in Makefile, to make Brainflayer compile successfully on Ubuntu 18.04.
+
+Ubuntu 20.04
+
+You should build it from Brainflayer's original repo
+
+[Brainflayer] (https://github.com/ryancdotorg/brainflayer)
+
 
 Below this line is the original Brainflayer README
 ----------------------------------------------------------------------------------------------------
