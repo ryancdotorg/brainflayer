@@ -57,26 +57,26 @@ int main(int argc, char **argv) {
     unhex(line, strlen(line), hash.uc, sizeof(hash.uc));
 
     unsigned int bit;
-    bit = BH00(hash.uc); if (BLOOM_GET_BIT(bit) == 0) { continue; }
-    bit = BH01(hash.uc); if (BLOOM_GET_BIT(bit) == 0) { continue; }
-    bit = BH02(hash.uc); if (BLOOM_GET_BIT(bit) == 0) { continue; }
-    bit = BH03(hash.uc); if (BLOOM_GET_BIT(bit) == 0) { continue; }
-    bit = BH04(hash.uc); if (BLOOM_GET_BIT(bit) == 0) { continue; }
-    bit = BH05(hash.uc); if (BLOOM_GET_BIT(bit) == 0) { continue; }
-    bit = BH06(hash.uc); if (BLOOM_GET_BIT(bit) == 0) { continue; }
-    bit = BH07(hash.uc); if (BLOOM_GET_BIT(bit) == 0) { continue; }
-    bit = BH08(hash.uc); if (BLOOM_GET_BIT(bit) == 0) { continue; }
-    bit = BH09(hash.uc); if (BLOOM_GET_BIT(bit) == 0) { continue; }
-    bit = BH10(hash.uc); if (BLOOM_GET_BIT(bit) == 0) { continue; }
-    bit = BH11(hash.uc); if (BLOOM_GET_BIT(bit) == 0) { continue; }
-    bit = BH12(hash.uc); if (BLOOM_GET_BIT(bit) == 0) { continue; }
-    bit = BH13(hash.uc); if (BLOOM_GET_BIT(bit) == 0) { continue; }
-    bit = BH14(hash.uc); if (BLOOM_GET_BIT(bit) == 0) { continue; }
-    bit = BH15(hash.uc); if (BLOOM_GET_BIT(bit) == 0) { continue; }
-    bit = BH16(hash.uc); if (BLOOM_GET_BIT(bit) == 0) { continue; }
-    bit = BH17(hash.uc); if (BLOOM_GET_BIT(bit) == 0) { continue; }
-    bit = BH18(hash.uc); if (BLOOM_GET_BIT(bit) == 0) { continue; }
-    bit = BH19(hash.uc); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+    bit = BH00(hash.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+    bit = BH01(hash.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+    bit = BH02(hash.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+    bit = BH03(hash.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+    bit = BH04(hash.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+    bit = BH05(hash.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+    bit = BH06(hash.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+    bit = BH07(hash.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+    bit = BH08(hash.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+    bit = BH09(hash.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+    bit = BH10(hash.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+    bit = BH11(hash.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+    bit = BH12(hash.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+    bit = BH13(hash.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+    bit = BH14(hash.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+    bit = BH15(hash.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+    bit = BH16(hash.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+    bit = BH17(hash.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+    bit = BH18(hash.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
+    bit = BH19(hash.ul); if (BLOOM_GET_BIT(bit) == 0) { continue; }
 
     if (hfile && !hsearchf(hfile, &hash)) {
       //fprintf(ofile, "%s (false positive)\n", hex(hash.uc, sizeof(hash.uc), buf, sizeof(buf)));
