@@ -357,6 +357,7 @@ void usage(unsigned char *name) {
  -r FRAGMENT                 use FRAGMENT for cracking rushwallet passphrase\n\
  -I HEXPRIVKEY               incremental private key cracking mode, starting\n\
                              at HEXPRIVKEY (supports -n) FAST\n\
+ -z                          random hex privkey generation\n\                       
  -k K                        skip the first K lines of input\n\
  -n K/N                      use only the Kth of every N input lines\n\
  -B                          batch size for affine transformations\n\
@@ -392,7 +393,7 @@ int main(int argc, char **argv) {
   unsigned char modestr[64];
 
   int spok = 0, aopt = 0, vopt = 0, wopt = 16, xopt = 0;
-  int nopt_mod = 0, nopt_rem = 0, Bopt = 0;
+  int nopt_mod = 0, nopt_rem = 0, Bopt = 0, zopt = 0;
   uint64_t kopt = 0;
   unsigned char *bopt = NULL, *iopt = NULL, *oopt = NULL;
   unsigned char *topt = NULL, *sopt = NULL, *popt = NULL;
@@ -411,7 +412,7 @@ int main(int argc, char **argv) {
   unsigned char batch_priv[BATCH_MAX][32];
   unsigned char batch_upub[BATCH_MAX][65];
 
-  while ((c = getopt(argc, argv, "avxb:hi:k:f:m:n:o:p:s:r:c:t:w:I:B:")) != -1) {
+  while ((c = getopt(argc, argv, "zavxb:hi:k:f:m:n:o:p:s:r:c:t:w:I:B:")) != -1) {
     switch (c) {
       case 'a':
         aopt = 1; // open output file in append mode
@@ -439,6 +440,10 @@ int main(int argc, char **argv) {
         break;
       case 'v':
         vopt = 1; // verbose
+        break;
+      case 'z':
+        zopt = 1; // random hex
+        srand (time(NULL));
         break;
       case 'b':
         bopt = optarg; // bloom filter file
@@ -550,6 +555,15 @@ int main(int argc, char **argv) {
     skipping = 1;
     if (!nopt_mod) { nopt_mod = 1; };
   }
+
+  if (zopt) {
+    skipping = 1;
+    // allocate batch_line entries to be able to get readable result in case hex key found
+    for (i = 0; i < BATCH_MAX; ++i) {
+      batch_line[i] = malloc(32);
+    }
+    if (!nopt_mod) { nopt_mod = 1; };
+  } 
 
 
   /* handle copt */
@@ -717,7 +731,7 @@ int main(int argc, char **argv) {
   if (!Bopt) { Bopt = BATCH_MAX; }
 
   for (;;) {
-    if (Iopt) {
+    if (Iopt) { // incremental mode
       if (skipping) {
         priv_add_uint32(priv, nopt_rem + kopt);
         skipping = 0;
@@ -726,6 +740,19 @@ int main(int argc, char **argv) {
       memcpy(priv, batch_priv[Bopt-1], 32);
       priv_add_uint32(priv, nopt_mod);
 
+      batch_stopped = Bopt;
+    } else if (zopt) { // randomize mode
+
+      for (i = 0; i < Bopt; ++i) {
+        for (int x = 0; x < 32; x++) {
+          batch_priv[i][x] = rand();
+        }
+      }
+
+      // batch compute the public keys
+      secp256k1_ec_pubkey_batch_create(Bopt, batch_upub, batch_priv);
+
+      // save ending value from read loop
       batch_stopped = Bopt;
     } else {
       for (i = 0; i < Bopt; ++i) {
@@ -795,7 +822,7 @@ int main(int argc, char **argv) {
           if (!fopt || hsearchf(ffile, &hash160)) {
             if (tty) { fprintf(ofile, "\033[0K"); }
             // reformat/populate the line if required
-            if (Iopt) {
+            if (Iopt || zopt) {
               hex(batch_priv[i], 32, batch_line[i], 65);
             }
             fprintresult(ofile, &hash160, pubhashfn[j].id, modestr, batch_line[i]);
