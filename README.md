@@ -3,6 +3,13 @@ Brainflayer
 
 ⚠️ *I am not currently maintaining Brainflayer. It has acomplished [what I set out to do with it](https://rya.nc/defcon-brainwallets.html), and the work that went into it brought about a major inflection point in my career, but I have moved on to other things. Someday, I may come back to it, but don't count on that.* ⚠️
 
+I am currently [suing the British Government](https://www.leighday.co.uk/news/news/2023-news/legal-challenge-urges-government-to-give-legal-recognition-to-nonbinary-people/). If you've found my work useful...
+
+**...please donate to my [crowdfunding effort](https://www.crowdjustice.com/case/non-binary-recognition/)**.
+
+Description
+-----------
+
 Brainflayer is a Proof-of-Concept brainwallet cracking tool that uses
 [libsecp256k1](https://github.com/bitcoin/secp256k1) for pubkey generation.
 It was originally released as part of my DEFCON talk about cracking brainwallets
