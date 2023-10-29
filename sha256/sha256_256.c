@@ -14,7 +14,7 @@
 #include <endian.h>
 
 // Process input in chunks of 64 bytes, caller resposible for padding
-static void sha256_xform_internal(uint32_t *digest, const char *data, uint32_t nblk)
+static void sha256_256(uint32_t *digest, const char *data)
 {
   const uint32_t *input=(uint32_t *)data;
   uint32_t temp1, temp2, W[16];
@@ -47,17 +47,19 @@ static void sha256_xform_internal(uint32_t *digest, const char *data, uint32_t n
 
   for (;;) {
     /* Load input */
-    for(i=0;i < 16;i++)
-      W[i]=htobe32(input[i]);
+    for (i = 0; i < 8; ++i) {
+      W[i] = htobe32(input[i]);
+    }
 
-    A = digest[0];
-    B = digest[1];
-    C = digest[2];
-    D = digest[3];
-    E = digest[4];
-    F = digest[5];
-    G = digest[6];
-    H = digest[7];
+    W[ 8] = be32toh(0x80000000);
+    W[ 9] = 0; W[10] = 0; W[11] = 0;
+    W[12] = 0; W[13] = 0; W[14] = 0;
+    W[15] = be32toh(0x00000100);
+
+    A = 0x6a09e667; B = 0xbb67ae85;
+    C = 0x3c6ef372; D = 0xa54ff53a;
+    E = 0x510e527f; F = 0x9b05688c;
+    G = 0x1f83d9ab; H = 0x5be0cd19;
 
     P(A, B, C, D, E, F, G, H, W[ 0], 0x428a2f98);
     P(H, A, B, C, D, E, F, G, W[ 1], 0x71374491);
@@ -124,16 +126,9 @@ static void sha256_xform_internal(uint32_t *digest, const char *data, uint32_t n
     P(C, D, E, F, G, H, A, B, R(14), 0xbef9a3f7);
     P(B, C, D, E, F, G, H, A, R(15), 0xc67178f2);
 
-    digest[0] += A;
-    digest[1] += B;
-    digest[2] += C;
-    digest[3] += D;
-    digest[4] += E;
-    digest[5] += F;
-    digest[6] += G;
-    digest[7] += H;
-
-    if (--nblk <= 0) return;
-    input += (64 / sizeof(*input));
+    digest[0] = A + 0x6a09e667; digest[1] = B + 0xbb67ae85;
+    digest[2] = C + 0x3c6ef372; digest[3] = D + 0xa54ff53a;
+    digest[4] = E + 0x510e527f; digest[5] = F + 0x9b05688c;
+    digest[6] = G + 0x1f83d9ab; digest[7] = H + 0x5be0cd19;
   }
 }

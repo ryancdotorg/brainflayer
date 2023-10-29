@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
   // don't flush on newlines)
   //setvbuf(stdout, NULL, _IOFBF, 65536);
 
-  SHA2_256_Register();
+  SHA2_256_Register(-1);
 
   while ((line_read = getline(&line, &line_sz, stdin)) > 0) {
     while (line_sz * 2 + 64 > buf_sz) {

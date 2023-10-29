@@ -8,9 +8,9 @@
 
 .text
 .align 32
-ENTRY(sha256_transform_ssse3)
+ENTRY(sha256_xform_ssse3)
 	ret
-ENDPROC(sha256_transform_ssse3)
+ENDPROC(sha256_xform_ssse3)
 
 ENTRY(sha256_ssse3_built)
     xor %eax,%eax

@@ -8,16 +8,17 @@
 #include "b58.h"
 
 static char b58t[] = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-static char b58r[] = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
--1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
--1,-1,-1,-1,0,1,2,3,4,5,6,7,8,-1,-1,-1,-1,-1,-1,-1,9,10,11,12,13,14,15,16,-1,
-17,18,19,20,21,-1,22,23,24,25,26,27,28,29,30,31,32,-1,-1,-1,-1,-1,-1,33,34,35,
-36,37,38,39,40,41,42,43,-1,44,45,46,47,48,49,50,51,52,53,54,55,56,57,-1,-1,-1,
--1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
--1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
--1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
--1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
--1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
+static signed char b58r[] = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,0,1,2,3,4,5,6,7,8,-1,-1,-1,-1,-1,-1,-1,
+9,10,11,12,13,14,15,16,-1,17,18,19,20,21,-1,22,23,24,25,26,27,28,29,30,
+31,32,-1,-1,-1,-1,-1,-1,33,34,35,36,37,38,39,40,41,42,43,-1,44,45,46,47,
+48,49,50,51,52,53,54,55,56,57,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
 
 void b58_csum(unsigned char out[4], const unsigned char *in, size_t in_sz) {
   unsigned char hash[SHA256_DIGEST_LENGTH];
@@ -35,7 +36,7 @@ int b58_csum_vrfy(const unsigned char chk[4], const unsigned char *in, size_t in
   return memcmp(chk, hash, 4);
 }
 
-// ported from https://gist.github.com/diafygi/90a3e80ca1c2793220e5#file-annotated-js
+// ported from https://gist.github.com/diafygi/90a3e80ca1c2793220e5#file-annotated-js-L1
 ssize_t b58e_raw(unsigned char *out, size_t out_sz, const unsigned char *in, size_t in_sz) {
   int d[256]; // b58 digits, reversed, negitive => undefined
   memset(d, -1, sizeof(d));
@@ -67,6 +68,7 @@ ssize_t b58e_raw(unsigned char *out, size_t out_sz, const unsigned char *in, siz
   return p; // return output size
 }
 
+// ported from https://gist.github.com/diafygi/90a3e80ca1c2793220e5#file-annotated-js-L29
 ssize_t b58d_raw(unsigned char *out, size_t out_sz, const unsigned char *in, size_t in_sz) {
   int d[256]; // bytes, reversed, negitive => undefined
   memset(d, -1, sizeof(d));
@@ -76,19 +78,18 @@ ssize_t b58d_raw(unsigned char *out, size_t out_sz, const unsigned char *in, siz
   int carry, n;
 
   // ensure we don't overflow the internal buffer
-  if (out_sz > (sizeof(d)/sizeof(d[0]))) { out_sz = (sizeof(d)/sizeof(d[0])); }
+  if (out_sz > (sizeof(d)/sizeof(d[0]))) { out_sz = (sizeof(d)/sizeof(d[0])); return -1; }
 
   for (i = 0; i < in_sz; ++i) {
-    j = 0;
     carry = b58r[in[i]];
-    if (carry < 0) { return carry; }
+    if (carry < 0) { return -2; }
     if (carry == 0 && p == i) { out[p++] = 0; }
-    while (d[j] >= 0 || carry) {
+    for (j = 0; d[j] >= 0 || carry;) {
       n = d[j];
-      n = n < 0 ? carry : n * 58 + carry;
+      n = n >= 0 ? n * 58 + carry : carry;
       carry = n >> 8;
       d[j++] = n & 0xff;
-      if (j > out_sz) { return -1; }
+      if (j > out_sz) { return -3; }
     }
   }
 
@@ -111,10 +112,10 @@ ssize_t b58d_chk(unsigned char *out, size_t out_sz, const unsigned char *in, siz
   ssize_t raw_sz;
 
   if (in_sz > 256) { return -1; }
-  if ((raw_sz = b58d_raw(raw, sizeof(raw), in, in_sz)) < 5) { return -1; }
+  if ((raw_sz = b58d_raw(raw, sizeof(raw), in, in_sz)) < 5) { return -2; }
   *ver = raw[0];
-  if (b58_csum_vrfy(raw+(raw_sz-4), raw, raw_sz-4) != 0) { return -1; }
-  if (out_sz < raw_sz - 5) { return -1; }
+  if (b58_csum_vrfy(raw+(raw_sz-4), raw, raw_sz-4) != 0) { return -3; }
+  if (out_sz < raw_sz - 5) { return -4; }
   memcpy(out, raw+1, raw_sz-5);
   return raw_sz - 5;
 }
@@ -137,10 +138,10 @@ ssize_t b58d_chkl(unsigned char *out, size_t out_sz, const unsigned char *in, si
   ssize_t raw_sz;
 
   if (in_sz > 256) { return -1; }
-  if ((raw_sz = b58d_raw(raw, sizeof(raw), in, in_sz)) < 8) { return -1; }
+  if ((raw_sz = b58d_raw(raw, sizeof(raw), in, in_sz)) < 8) { return -2; }
   memcpy(&tmp, raw, 4);
   *ver = ntohl(tmp);
-  if (b58_csum_vrfy(raw+(raw_sz-4), raw, raw_sz-4) != 0) { return -1; }
+  if (b58_csum_vrfy(raw+(raw_sz-4), raw, raw_sz-4) != 0) { return -3; }
   if (out_sz < raw_sz - 8) { return -1; }
   memcpy(out, raw+4, raw_sz-8);
   return raw_sz - 8;

@@ -3,33 +3,45 @@
 #include <string.h>
 #include <stdio.h>
 
+#include <endian.h>
+
 #include "sha256.h"
 
-/* byte conversion */
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-# define be32(x) __builtin_bswap32(x)
-# define be64(x) __builtin_bswap64(x)
-#else
-# define be32(x) (x)
-# define be64(x) (x)
-#endif
+#include "ripemd160_small.c"
+#include "ripemd160_fast.c"
+#include "ripemd160_asm.c"
 
-#include "ripemd160.c"
+static void sha256_xform_internal(uint32_t *digest, const char *data, uint32_t nblk);
 
-static void sha256_transform_internal(uint32_t *digest, const char *data, uint64_t nblk);
+extern void sha256_xform_nayuki64(uint32_t *digest, const char *data, uint32_t nblk);
+extern void sha256_xform_ssse3(uint32_t *digest, const char *data, uint32_t nblk);
+extern void sha256_xform_avx(uint32_t *digest, const char *data, uint32_t nblk);
+extern void sha256_xform_rorx(uint32_t *digest, const char *data, uint32_t nblk);
+extern void sha256_xform_ni(uint32_t *digest, const char *data, uint32_t nblk);
 
-extern void sha256_transform_ssse3(uint32_t *digest, const char *data, uint64_t nblk);
-extern void sha256_transform_avx(uint32_t *digest, const char *data, uint64_t nblk);
-extern void sha256_transform_rorx(uint32_t *digest, const char *data, uint64_t nblk);
-extern void sha256_ni_transform(uint32_t *digest, const char *data, uint64_t nblk);
-
+extern int sha256_nayuki64_built();
 extern int sha256_ssse3_built();
 extern int sha256_avx_built();
 extern int sha256_rorx_built();
 extern int sha256_ni_built();
 
-static void (*sha256_transform_func)(uint32_t *digest, const char *data, uint64_t nblk)=
-  sha256_transform_internal;
+#define RIPEMD160_COMPRESS(S, D) ripemd160_xform_func(S, D)
+
+static void sha256_xform_default(uint32_t *a, const char *b, uint32_t c) {
+  SHA2_256_Register(-1);
+  SHA2_256_Transform(a, b, c);
+}
+
+void (*SHA2_256_Transform)(uint32_t *digest, const char *data, uint32_t nblk)=
+  sha256_xform_default;
+
+static void ripemd160_xform_default(uint32_t *digest, const char *data) {
+  ripemd160_xform_func = ripemd160_fast;
+  ripemd160_xform_func(digest, data);
+}
+
+void (*ripemd160_xform_func)(uint32_t *digest, const char *data)=
+  ripemd160_xform_default;
 
 /* static padding for 256 bit input */
 static uint8_t rmd160_256[64] = {
@@ -65,16 +77,16 @@ void Hash256(uint8_t hash[], const uint8_t data[], size_t len) {
   };
 
   SHA2_256(sha256_256, data, len);
-  sha256_transform_func(state, sha256_256, 1);
+  SHA2_256_Transform(state, sha256_256, 1);
 
-  ((uint32_t *)hash)[0] = be32(state[0]);
-  ((uint32_t *)hash)[1] = be32(state[1]);
-  ((uint32_t *)hash)[2] = be32(state[2]);
-  ((uint32_t *)hash)[3] = be32(state[3]);
-  ((uint32_t *)hash)[4] = be32(state[4]);
-  ((uint32_t *)hash)[5] = be32(state[5]);
-  ((uint32_t *)hash)[6] = be32(state[6]);
-  ((uint32_t *)hash)[7] = be32(state[7]);
+  ((uint32_t *)hash)[0] = htobe32(state[0]);
+  ((uint32_t *)hash)[1] = htobe32(state[1]);
+  ((uint32_t *)hash)[2] = htobe32(state[2]);
+  ((uint32_t *)hash)[3] = htobe32(state[3]);
+  ((uint32_t *)hash)[4] = htobe32(state[4]);
+  ((uint32_t *)hash)[5] = htobe32(state[5]);
+  ((uint32_t *)hash)[6] = htobe32(state[6]);
+  ((uint32_t *)hash)[7] = htobe32(state[7]);
 }
 
 // caller is responsible for padding
@@ -89,28 +101,28 @@ void Hash256_Raw(uint8_t hash[], const uint8_t data[], uint64_t nblk) {
     0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
   };
 
-  sha256_transform_func(state1, data, nblk);
+  SHA2_256_Transform(state1, data, nblk);
 
-  sha256_in[0] = be32(state1[0]); sha256_in[1] = be32(state1[1]);
-  sha256_in[2] = be32(state1[2]); sha256_in[3] = be32(state1[3]);
-  sha256_in[4] = be32(state1[4]); sha256_in[5] = be32(state1[5]);
-  sha256_in[6] = be32(state1[6]); sha256_in[7] = be32(state1[7]);
+  sha256_in[0] = htobe32(state1[0]); sha256_in[1] = htobe32(state1[1]);
+  sha256_in[2] = htobe32(state1[2]); sha256_in[3] = htobe32(state1[3]);
+  sha256_in[4] = htobe32(state1[4]); sha256_in[5] = htobe32(state1[5]);
+  sha256_in[6] = htobe32(state1[6]); sha256_in[7] = htobe32(state1[7]);
 
-  sha256_transform_func(state2, sha256_256, 1);
+  SHA2_256_Transform(state2, sha256_256, 1);
 
-  ((uint32_t *)hash)[0] = be32(state2[0]);
-  ((uint32_t *)hash)[1] = be32(state2[1]);
-  ((uint32_t *)hash)[2] = be32(state2[2]);
-  ((uint32_t *)hash)[3] = be32(state2[3]);
-  ((uint32_t *)hash)[4] = be32(state2[4]);
-  ((uint32_t *)hash)[5] = be32(state2[5]);
-  ((uint32_t *)hash)[6] = be32(state2[6]);
-  ((uint32_t *)hash)[7] = be32(state2[7]);
+  ((uint32_t *)hash)[0] = htobe32(state2[0]);
+  ((uint32_t *)hash)[1] = htobe32(state2[1]);
+  ((uint32_t *)hash)[2] = htobe32(state2[2]);
+  ((uint32_t *)hash)[3] = htobe32(state2[3]);
+  ((uint32_t *)hash)[4] = htobe32(state2[4]);
+  ((uint32_t *)hash)[5] = htobe32(state2[5]);
+  ((uint32_t *)hash)[6] = htobe32(state2[6]);
+  ((uint32_t *)hash)[7] = htobe32(state2[7]);
 }
 
 void Hash160(uint8_t hash[], const uint8_t data[], size_t len) {
   SHA2_256(rmd160_256, data, len);
-  ripemd160_rawcompress(rmd160_256, hash);
+  RIPEMD160_COMPRESS((uint32_t *)hash, rmd160_256);
 }
 
 // caller is responsible for padding
@@ -121,14 +133,31 @@ inline void Hash160_Raw(uint8_t hash[], const uint8_t data[], uint64_t nblk) {
     0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
   };
 
-  sha256_transform_func(state, data, nblk);
+  SHA2_256_Transform(state, data, nblk);
 
-  rmd160_in[0] = be32(state[0]); rmd160_in[1] = be32(state[1]);
-  rmd160_in[2] = be32(state[2]); rmd160_in[3] = be32(state[3]);
-  rmd160_in[4] = be32(state[4]); rmd160_in[5] = be32(state[5]);
-  rmd160_in[6] = be32(state[6]); rmd160_in[7] = be32(state[7]);
+  rmd160_in[0] = htobe32(state[0]); rmd160_in[1] = htobe32(state[1]);
+  rmd160_in[2] = htobe32(state[2]); rmd160_in[3] = htobe32(state[3]);
+  rmd160_in[4] = htobe32(state[4]); rmd160_in[5] = htobe32(state[5]);
+  rmd160_in[6] = htobe32(state[6]); rmd160_in[7] = htobe32(state[7]);
 
-  ripemd160_rawcompress(rmd160_256, hash);
+  RIPEMD160_COMPRESS((uint32_t *)hash, rmd160_256);
+}
+
+static uint8_t input22[64] = {
+  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x80, 0x00,
+  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,
+
+  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,
+  /* length 176 bits, big endian uint64_t */
+  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0xb0
+};
+void Hash160_22(uint8_t hash[], const uint8_t data[]) {
+  memcpy(input22, data, 22);
+  Hash160_Raw(hash, input22, 1);
 }
 
 static uint8_t input25[64] = {
@@ -296,27 +325,36 @@ inline void SHA2_256(uint8_t hash[], const uint8_t data[], size_t len) {
   // set a 1 bit after the data
   padding[remaining_bytes] = 0x80;
 
-  sha256_transform_func(state, data, dblk);
+  SHA2_256_Transform(state, data, dblk);
   // set length
   if (remaining_bytes < 56) {
     memset(padding + remaining_bytes + 1, 0,  56 - (remaining_bytes + 1));
-    ((uint64_t *)padding)[ 7] = be64(len * 8);
-    sha256_transform_func(state, padding, 1);
+    ((uint64_t *)padding)[ 7] = htobe64(len * 8);
+    SHA2_256_Transform(state, padding, 1);
   } else {
     memset(padding + remaining_bytes + 1, 0, 120 - (remaining_bytes + 1));
-    ((uint64_t *)padding)[15] = be64(len * 8);
-    sha256_transform_func(state, padding, 2);
+    ((uint64_t *)padding)[15] = htobe64(len * 8);
+    SHA2_256_Transform(state, padding, 2);
   }
 
   // write out result
-  ((uint32_t *)hash)[0] = be32(state[0]);
-  ((uint32_t *)hash)[1] = be32(state[1]);
-  ((uint32_t *)hash)[2] = be32(state[2]);
-  ((uint32_t *)hash)[3] = be32(state[3]);
-  ((uint32_t *)hash)[4] = be32(state[4]);
-  ((uint32_t *)hash)[5] = be32(state[5]);
-  ((uint32_t *)hash)[6] = be32(state[6]);
-  ((uint32_t *)hash)[7] = be32(state[7]);
+  ((uint32_t *)hash)[0] = htobe32(state[0]);
+  ((uint32_t *)hash)[1] = htobe32(state[1]);
+  ((uint32_t *)hash)[2] = htobe32(state[2]);
+  ((uint32_t *)hash)[3] = htobe32(state[3]);
+  ((uint32_t *)hash)[4] = htobe32(state[4]);
+  ((uint32_t *)hash)[5] = htobe32(state[5]);
+  ((uint32_t *)hash)[6] = htobe32(state[6]);
+  ((uint32_t *)hash)[7] = htobe32(state[7]);
+}
+
+void SHA2_256_Clone(SHA2_256_CTX *dst, const SHA2_256_CTX *src) {
+  // relies on .data being first
+  if (src->datalen) {
+    memcpy(dst, src, sizeof(*dst));
+  } else {
+    memcpy(dst + sizeof(dst->data), src + sizeof(dst->data), sizeof(*dst) - sizeof(dst->data));
+  }
 }
 
 void SHA2_256_Init(SHA2_256_CTX *ctx) {
@@ -345,7 +383,7 @@ void SHA2_256_Update(SHA2_256_CTX *ctx, const uint8_t data[], size_t len) {
       return;
     } else {
       memcpy(ctx->data + ctx->datalen, input, i);
-      sha256_transform_func(ctx->state, ctx->data, 1);
+      SHA2_256_Transform(ctx->state, ctx->data, 1);
       ctx->bitlen += 512;
       ctx->datalen = 0;
       input += i;
@@ -355,7 +393,7 @@ void SHA2_256_Update(SHA2_256_CTX *ctx, const uint8_t data[], size_t len) {
 
   if (len >= 64) {
     i = len / 64;
-    sha256_transform_func(ctx->state, input, i);
+    SHA2_256_Transform(ctx->state, input, i);
     len -= i * 64;
     input += i * 64;
     ctx->bitlen += i * 512;
@@ -374,24 +412,24 @@ void SHA2_256_Final(uint8_t hash[], SHA2_256_CTX *ctx) {
   } else {
     ctx->data[i++] = 0x80;
     memset(ctx->data + i, 0, 64 - i);
-    sha256_transform_func(ctx->state, ctx->data, 1);
+    SHA2_256_Transform(ctx->state, ctx->data, 1);
     memset(ctx->data, 0, 56);
   }
 
   // padding
   ctx->bitlen += ctx->datalen * 8;
-  ((uint64_t *)ctx->data)[7] = be64(ctx->bitlen);
+  ((uint64_t *)ctx->data)[7] = htobe64(ctx->bitlen);
 
-  sha256_transform_func(ctx->state, ctx->data, 1);
+  SHA2_256_Transform(ctx->state, ctx->data, 1);
 
-  ((uint32_t *)hash)[0] = be32(ctx->state[0]);
-  ((uint32_t *)hash)[1] = be32(ctx->state[1]);
-  ((uint32_t *)hash)[2] = be32(ctx->state[2]);
-  ((uint32_t *)hash)[3] = be32(ctx->state[3]);
-  ((uint32_t *)hash)[4] = be32(ctx->state[4]);
-  ((uint32_t *)hash)[5] = be32(ctx->state[5]);
-  ((uint32_t *)hash)[6] = be32(ctx->state[6]);
-  ((uint32_t *)hash)[7] = be32(ctx->state[7]);
+  ((uint32_t *)hash)[0] = htobe32(ctx->state[0]);
+  ((uint32_t *)hash)[1] = htobe32(ctx->state[1]);
+  ((uint32_t *)hash)[2] = htobe32(ctx->state[2]);
+  ((uint32_t *)hash)[3] = htobe32(ctx->state[3]);
+  ((uint32_t *)hash)[4] = htobe32(ctx->state[4]);
+  ((uint32_t *)hash)[5] = htobe32(ctx->state[5]);
+  ((uint32_t *)hash)[6] = htobe32(ctx->state[6]);
+  ((uint32_t *)hash)[7] = htobe32(ctx->state[7]);
 }
 
 // caller responsible for making sure the buffer is big enough
@@ -411,7 +449,7 @@ uint64_t SHA2_256_Pad(uint8_t data[], size_t len) {
   }
 
   bitlen_ptr = (uint64_t *)(data + (nblk << 6) - 8);
-  *bitlen_ptr = be64(len * 8);
+  *bitlen_ptr = htobe64(len * 8);
 
   return nblk;
 }
@@ -423,16 +461,16 @@ void SHA2_256_Raw(uint8_t hash[], const uint8_t data[], uint64_t nblk) {
     0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
   };
 
-  sha256_transform_func(state, data, nblk);
+  SHA2_256_Transform(state, data, nblk);
 
-  ((uint32_t *)hash)[0] = be32(state[0]);
-  ((uint32_t *)hash)[1] = be32(state[1]);
-  ((uint32_t *)hash)[2] = be32(state[2]);
-  ((uint32_t *)hash)[3] = be32(state[3]);
-  ((uint32_t *)hash)[4] = be32(state[4]);
-  ((uint32_t *)hash)[5] = be32(state[5]);
-  ((uint32_t *)hash)[6] = be32(state[6]);
-  ((uint32_t *)hash)[7] = be32(state[7]);
+  ((uint32_t *)hash)[0] = htobe32(state[0]);
+  ((uint32_t *)hash)[1] = htobe32(state[1]);
+  ((uint32_t *)hash)[2] = htobe32(state[2]);
+  ((uint32_t *)hash)[3] = htobe32(state[3]);
+  ((uint32_t *)hash)[4] = htobe32(state[4]);
+  ((uint32_t *)hash)[5] = htobe32(state[5]);
+  ((uint32_t *)hash)[6] = htobe32(state[6]);
+  ((uint32_t *)hash)[7] = htobe32(state[7]);
 }
 
 #include "sha256_xform.c"

@@ -8,9 +8,9 @@
 
 .text
 .align 32
-ENTRY(sha256_transform_avx)
+ENTRY(sha256_xform_avx)
 	ret
-ENDPROC(sha256_transform_avx)
+ENDPROC(sha256_xform_avx)
 
 ENTRY(sha256_avx_built)
     xor %eax,%eax

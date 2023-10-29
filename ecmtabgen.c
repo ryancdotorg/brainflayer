@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
     exit(1);
   }
 
-  // reduce window size if ineffeicent
+  // identify wasteful window size
   act_bits = req_bits;
   act_buckets = req_buckets = ceil(256.0/req_bits);
   while (act_buckets == req_buckets) {
@@ -50,7 +50,8 @@ int main(int argc, char **argv) {
   act_buckets = ceil(256.0/act_bits);
 
   if (act_bits < req_bits) {
-    fprintf(stderr, "[*] Requested window_size %d is inefficient, reduced to %d\n", req_bits, act_bits);
+    fprintf(stderr, "[*] Requested window_size %d is wasteful, retry with %d\n", req_bits, act_bits);
+    exit(1);
   }
 
   fprintf(stderr, "[*] Computing %d x 2^%d point multiplication matrix...\n", act_buckets, act_bits);

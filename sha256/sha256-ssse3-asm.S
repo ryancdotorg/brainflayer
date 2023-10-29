@@ -347,20 +347,20 @@ a = TMP_
 	and     c, y2                 # y2 = a&c
 	and     b, y0                 # y0 = (a|c)&b
 	add     y1, h                 # h = h + S1 + CH + k + w + S0
-	or      y2, y0		      # y0 = MAJ = (a|c)&b)|(a&c)
-	add     y0, h		      # h = h + S1 + CH + k + w + S0 + MAJ
+	or      y2, y0                # y0 = MAJ = (a|c)&b)|(a&c)
+	add     y0, h                 # h = h + S1 + CH + k + w + S0 + MAJ
 	ROTATE_ARGS
 .endm
 
 ########################################################################
-## void sha256_transform_ssse3(void *input_data, UINT32 digest[8], UINT64 num_blks)
+## void sha256_xform_ssse3(void *input_data, UINT32 digest[8], UINT64 num_blks)
 ## arg 1 : pointer to digest
 ## arg 2 : pointer to input data
 ## arg 3 : Num blocks
 ########################################################################
 .text
-ENTRY(sha256_transform_ssse3)
 .align 32
+ENTRY(sha256_xform_ssse3)
 	pushq   %rbx
 	pushq   %rbp
 	pushq   %r13
@@ -478,7 +478,7 @@ done_hash:
 	popq    %rbx
 
 	ret
-ENDPROC(sha256_transform_ssse3)
+ENDPROC(sha256_xform_ssse3)
 
 ENTRY(sha256_ssse3_built)
     xor         %eax,%eax

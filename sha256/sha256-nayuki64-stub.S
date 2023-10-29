@@ -8,11 +8,11 @@
 
 .text
 .align 32
-ENTRY(sha256_xform_ni)
+ENTRY(sha256_xform_nayuki64)
 	ret
-ENDPROC(sha256_xform_ni)
+ENDPROC(sha256_xform_nayuki64)
 
-ENTRY(sha256_ni_built)
+ENTRY(sha256_nayuki64_built)
     xor %eax,%eax
     ret
-ENDPROC(sha256_ni_built)
+ENDPROC(sha256_nayuki64_built)

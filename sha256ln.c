@@ -15,7 +15,7 @@ int main(int argc, char **argv) {
   unsigned char hash[32];
   SHA2_256_CTX ctx;
 
-  SHA2_256_Register();
+  SHA2_256_Register(15);
 
   if (argc > 1) {
     SHA2_256_Init(&ctx);

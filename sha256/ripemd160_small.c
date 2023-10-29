@@ -1,6 +1,9 @@
 // adapted by Pieter Wuille in 2012; all changes are in the public domain
 // modified by Ryan Castellucci in 2015; all changes are in the public domain
 
+#include <stdint.h>
+#include <string.h>
+
 /*
  *
  *  RIPEMD160.c : RIPEMD-160 implementation
@@ -161,14 +164,14 @@ static inline void byteswap_digest(uint32_t *p)
 }
 
 /* The RIPEMD160 compression function. */
-static inline void ripemd160_rawcompress(void *pbuf, void *ph)
+void ripemd160_rawcompress(uint32_t *ph, const char *pbuf)
 {
     uint8_t w, round;
     uint32_t T;
     uint32_t AL, BL, CL, DL, EL;    /* left line */
     uint32_t AR, BR, CR, DR, ER;    /* right line */
 
-    uint32_t *buf = pbuf;
+    uint32_t *buf = (uint32_t*)pbuf;
     uint32_t *h = ph;
 
     /* Byte-swap the buffer if we're on a big-endian machine */
@@ -254,3 +257,10 @@ static inline void ripemd160_rawcompress(void *pbuf, void *ph)
     byteswap_digest(h);
 #endif
 }
+
+#undef ROL
+#undef RMDF1
+#undef RMDF2
+#undef RMDF3
+#undef RMDF4
+#undef RMDF5

@@ -527,14 +527,14 @@ STACK_SIZE	= _RSP      + _RSP_SIZE
 .endm
 
 ########################################################################
-## void sha256_transform_rorx(void *input_data, UINT32 digest[8], UINT64 num_blks)
+## void sha256_xform_rorx(void *input_data, UINT32 digest[8], UINT64 num_blks)
 ## arg 1 : pointer to digest
 ## arg 2 : pointer to input data
 ## arg 3 : Num blocks
 ########################################################################
 .text
-ENTRY(sha256_transform_rorx)
 .align 32
+ENTRY(sha256_xform_rorx)
 	pushq	%rbx
 	pushq	%rbp
 	pushq	%r12
@@ -726,7 +726,7 @@ done_hash:
 	popq	%rbp
 	popq	%rbx
 	ret
-ENDPROC(sha256_transform_rorx)
+ENDPROC(sha256_xform_rorx)
 
 ENTRY(sha256_rorx_built)
     xor         %eax,%eax

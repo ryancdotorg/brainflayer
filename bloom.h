@@ -35,6 +35,7 @@
 #define BH19(N) (N[4]<<24|N[0]>> 8)
 
 void bloom_set_hash160(unsigned char *, uint32_t *);
+/*
 static unsigned int bloom_chk_hash160(unsigned char *bloom, uint32_t *h) {
   unsigned int t;
   t = BH00(h); if (BLOOM_GET_BIT(t) == 0) { return 0; }
@@ -59,6 +60,7 @@ static unsigned int bloom_chk_hash160(unsigned char *bloom, uint32_t *h) {
   t = BH19(h); if (BLOOM_GET_BIT(t) == 0) { return 0; }
   return 1;
 }
+*/
 
 //#define bloom_new() malloc(536870912)
 //unsigned char * bloom_load(unsigned char *);
