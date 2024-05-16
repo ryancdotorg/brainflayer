@@ -358,8 +358,10 @@ void usage(unsigned char *name) {
  -I HEXPRIVKEY               incremental private key cracking mode, starting\n\
                              at HEXPRIVKEY (supports -n) FAST\n\
  -k K                        skip the first K lines of input\n\
+ -N N                        stop after trying N keys\n\
  -n K/N                      use only the Kth of every N input lines\n\
- -B                          batch size for affine transformations\n\
+ -N N                        stop after N input lines or keys\n\
+ -B BATCH_SIZE               batch size for affine transformations\n\
                              must be a power of 2 (default/max: %d)\n\
  -w WINDOW_SIZE              window size for ecmult table (default: 16)\n\
                              uses about 3 * 2^w KiB memory on startup, but\n\
@@ -393,7 +395,7 @@ int main(int argc, char **argv) {
 
   int spok = 0, aopt = 0, vopt = 0, wopt = 16, xopt = 0;
   int nopt_mod = 0, nopt_rem = 0, Bopt = 0;
-  uint64_t kopt = 0;
+  uint64_t kopt = 0, Nopt = ~0ULL;
   unsigned char *bopt = NULL, *iopt = NULL, *oopt = NULL;
   unsigned char *topt = NULL, *sopt = NULL, *popt = NULL;
   unsigned char *mopt = NULL, *fopt = NULL, *ropt = NULL;
@@ -411,7 +413,7 @@ int main(int argc, char **argv) {
   unsigned char batch_priv[BATCH_MAX][32];
   unsigned char batch_upub[BATCH_MAX][65];
 
-  while ((c = getopt(argc, argv, "avxb:hi:k:f:m:n:o:p:s:r:c:t:w:I:B:")) != -1) {
+  while ((c = getopt(argc, argv, "avxb:hi:k:f:m:n:o:p:s:r:c:t:w:I:N:B:")) != -1) {
     switch (c) {
       case 'a':
         aopt = 1; // open output file in append mode
@@ -429,6 +431,9 @@ int main(int argc, char **argv) {
         break;
       case 'B':
         Bopt = atoi(optarg);
+        break;
+      case 'N':
+        Nopt = strtoull(optarg, NULL, 0); // allows 0x
         break;
       case 'w':
         if (wopt > 1) wopt = atoi(optarg);
@@ -703,10 +708,14 @@ int main(int argc, char **argv) {
     bail(1, "failed to initialize batch point conversion structures\n");
   }
 
+  if (vopt || Nopt != ~0ULL) {
+    ilines_curr = 0;
+  }
+
   if (vopt) {
     /* initialize timing data */
     time_start = time_last = getns();
-    olines = ilines_last = ilines_curr = 0;
+    olines = ilines_last = 0;
     ilines_rate_avg = -1;
     alpha = 0.500;
   } else {
@@ -817,6 +826,10 @@ int main(int argc, char **argv) {
     }
     // end public key processing loop
 
+    if (vopt || Nopt != ~0ULL) {
+      ilines_curr += batch_stopped;
+    }
+
     // start stats
     if (vopt) {
       ilines_curr += batch_stopped;
@@ -864,7 +877,7 @@ int main(int argc, char **argv) {
     // end stats
 
     // main loop exit condition
-    if (batch_stopped < Bopt) {
+    if (batch_stopped < Bopt || ilines_curr >= Nopt) {
       if (vopt) { fprintf(stderr, "\n"); }
       break;
     }
