@@ -541,6 +541,7 @@ void usage(unsigned char *name) {
                              labeled with DESCRIPTION,OFFSET\n\
  -T                          don't check if input is a tty\n\
  -k K                        skip the first K lines of input\n\
+ -N N                        stop after trying N keys\n\
  -n K/N                      use only the Kth of every N input lines\n\
  -N N                        stop after N input lines or keys\n\
  -B BATCH_SIZE               batch size for affine transformations\n\
@@ -1084,10 +1085,14 @@ int main(int argc, char **argv) {
     bail(1, "failed to initialize batch point conversion structures\n");
   }
 
+  if (Nopt > 0 || vopt) {
+    ilines_curr = 0;
+  }
+
   if (vopt) {
     /* initialize timing data */
     time_start = time_last = getns();
-    olines = ilines_last = ilines_curr = 0;
+    olines = ilines_last = 0;
     ilines_rate_avg = -1;
     alpha = 0.500;
   } else {
@@ -1270,7 +1275,10 @@ int main(int argc, char **argv) {
     }
     // end public key processing loop
 
-    ilines_curr += batch_stopped;
+    if (vopt || Nopt > 0) {
+      ilines_curr += batch_stopped;
+    }
+
     // start stats
     if (vopt) {
       if (batch_stopped < Bopt || ilines_curr >= Nopt || ilines_curr >= report_next) {
