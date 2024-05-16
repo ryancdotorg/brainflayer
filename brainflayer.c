@@ -358,9 +358,8 @@ void usage(unsigned char *name) {
  -I HEXPRIVKEY               incremental private key cracking mode, starting\n\
                              at HEXPRIVKEY (supports -n) FAST\n\
  -k K                        skip the first K lines of input\n\
- -N N                        stop after trying N keys\n\
- -n K/N                      use only the Kth of every N input lines\n\
  -N N                        stop after N input lines or keys\n\
+ -n K/N                      use only the Kth of every N input lines\n\
  -B BATCH_SIZE               batch size for affine transformations\n\
                              must be a power of 2 (default/max: %d)\n\
  -w WINDOW_SIZE              window size for ecmult table (default: 16)\n\
@@ -708,9 +707,7 @@ int main(int argc, char **argv) {
     bail(1, "failed to initialize batch point conversion structures\n");
   }
 
-  if (vopt || Nopt != ~0ULL) {
-    ilines_curr = 0;
-  }
+  ilines_curr = 0;
 
   if (vopt) {
     /* initialize timing data */
@@ -826,9 +823,7 @@ int main(int argc, char **argv) {
     }
     // end public key processing loop
 
-    if (vopt || Nopt != ~0ULL) {
-      ilines_curr += batch_stopped;
-    }
+    ilines_curr += batch_stopped;
 
     // start stats
     if (vopt) {
